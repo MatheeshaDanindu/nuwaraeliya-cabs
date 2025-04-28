@@ -1,4 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Vehicles from './pages/Vehicles';
+import Booking from './pages/Booking';
+import Profile from './pages/Profile';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -10,14 +19,18 @@ function App() {
   }, []);
 
   return (
-    <div>
-      <h1>Available Vehicles</h1>
-      <ul>
-        {vehicles.map(vehicle => (
-          <li key={vehicle.id}>{vehicle.model} - {vehicle.number_plate}</li>
-        ))}
-      </ul>
-    </div>
+    <Router>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/vehicles" element={<Vehicles />} />
+        <Route path="/booking" element={<Booking />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
+        <Route path="/AdminDashboard" element={<AdminDashboard />} />
+      </Routes>
+    </Router>
   );
 }
 
