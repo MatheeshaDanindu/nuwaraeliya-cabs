@@ -18,7 +18,14 @@ export default function Navbar() {
     setUser(stored ? JSON.parse(stored) : null);
   }, [location]);
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  };
+
   const isAdmin = user && user.role && user.role.trim().toLowerCase() === 'admin';
+  const isLoggedIn = !!user;
 
   return (
     <AppBar position="sticky" color="primary" elevation={2}>
@@ -28,12 +35,19 @@ export default function Navbar() {
         </Typography>
         <Button color="inherit" component={Link} to="/">Home</Button>
         <Button color="inherit" component={Link} to="/vehicles">Vehicles</Button>
-        <Button color="inherit" component={Link} to="/booking">Book Now</Button>
-        <Button color="inherit" component={Link} to="/profile">Profile</Button>
-        <Button color="inherit" component={Link} to="/login">Login</Button>
-        <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
-        {isAdmin && (
-          <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
+        {isLoggedIn && (
+          <>
+            <Button color="inherit" component={Link} to="/booking">Book Now</Button>
+            <Button color="inherit" component={Link} to="/profile">Profile</Button>
+            <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
+            {isAdmin && (
+              <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
+            )}
+            <Button color="inherit" onClick={handleLogout}>Logout</Button>
+          </>
+        )}
+        {!isLoggedIn && (
+          <Button color="inherit" component={Link} to="/login">Login</Button>
         )}
       </Toolbar>
     </AppBar>

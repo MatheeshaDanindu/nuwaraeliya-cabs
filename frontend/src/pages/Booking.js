@@ -1,8 +1,10 @@
 // src/pages/Booking.js
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, MenuItem, Alert } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 export default function Booking() {
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
   const [form, setForm] = useState({
     vehicleId: '',
@@ -12,6 +14,14 @@ export default function Booking() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redirect to login if not logged in
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   // Fetch available vehicles when dates change
   useEffect(() => {

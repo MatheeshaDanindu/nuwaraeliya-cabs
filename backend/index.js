@@ -168,7 +168,7 @@ app.get('/api/vehicle-unavailability', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
   const { vehicle_id, start_time, end_time, user_id } = req.body;
   if (!vehicle_id || !start_time || !end_time || !user_id) {
-    return res.status(400).json({ error: 'Missing required fields.' });
+    return res.status(401).json({ error: 'You must be logged in to book a vehicle.' });
   }
   try {
     // Check for overlapping bookings
