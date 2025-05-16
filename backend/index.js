@@ -289,11 +289,11 @@ app.get('/api/bookings', async (req, res) => {
   }
 });
 
-// Update booking status (approve/cancel)
+// Update booking status (approve/cancel/complete)
 app.put('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  if (!['confirmed', 'cancelled', 'pending'].includes(status)) {
+  if (!['confirmed', 'cancelled', 'pending', 'completed'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
   try {
