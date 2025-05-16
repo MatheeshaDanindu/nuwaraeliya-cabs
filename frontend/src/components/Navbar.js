@@ -5,6 +5,10 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { Link, useLocation } from 'react-router-dom';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 export default function Navbar() {
   const location = useLocation();
@@ -12,6 +16,7 @@ export default function Navbar() {
     const stored = localStorage.getItem('user');
     return stored ? JSON.parse(stored) : null;
   });
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -19,9 +24,18 @@ export default function Navbar() {
   }, [location]);
 
   const handleLogout = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    setLogoutDialogOpen(false);
     window.location.href = '/login';
+  };
+
+  const cancelLogout = () => {
+    setLogoutDialogOpen(false);
   };
 
   const isAdmin = user && user.role && user.role.trim().toLowerCase() === 'admin';
@@ -44,6 +58,14 @@ export default function Navbar() {
               <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
             )}
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
+            <Dialog open={logoutDialogOpen} onClose={cancelLogout}>
+              <DialogTitle>Confirm Logout</DialogTitle>
+              <DialogContent>Are you sure you want to log out?</DialogContent>
+              <DialogActions>
+                <Button onClick={cancelLogout}>Cancel</Button>
+                <Button onClick={confirmLogout} color="error" variant="contained">Logout</Button>
+              </DialogActions>
+            </Dialog>
           </>
         )}
         {!isLoggedIn && (

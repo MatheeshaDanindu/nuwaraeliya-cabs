@@ -198,6 +198,48 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
+// Get user profile
+app.get('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT id, name, email, phone FROM users WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update user profile
+app.put('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE users SET name = $1, email = $2, phone = $3 WHERE id = $4 RETURNING id, name, email, phone',
+      [name, email, phone, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get bookings for a user
+app.get('/api/bookings/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT b.*, v.model as vehicle_model FROM bookings b JOIN vehicles v ON b.vehicle_id = v.id WHERE b.user_id = $1 ORDER BY b.start_time DESC`,
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
