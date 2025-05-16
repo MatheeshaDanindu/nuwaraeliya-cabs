@@ -55,6 +55,9 @@ export default function Navbar() {
             {!isDriver && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
             <Button color="inherit" component={Link} to="/profile">Profile</Button>
             <Button color="inherit" component={Link} to={isDriver ? "/driver-dashboard" : "/dashboard"}>Dashboard</Button>
+            {isDriver && (
+              <Button color="inherit" component={Link} to="/driver-availability">My Unavailability</Button>
+            )}
             {isAdmin && (
               <>
                 <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>

@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard';
 import VehicleUnavailabilityAdmin from './pages/VehicleUnavailabilityAdmin';
 import AdminBookings from './pages/AdminBookings';
 import DriverDashboard from './pages/DriverDashboard';
+import DriverAvailability from './pages/DriverAvailability';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -37,6 +38,7 @@ function App() {
         <Route path="/vehicle-unavailability-admin" element={<VehicleUnavailabilityAdmin />} />
         <Route path="/admin-bookings" element={<AdminBookings />} />
         <Route path="/driver-dashboard" element={<DriverDashboard />} />
+        <Route path="/driver-availability" element={<DriverAvailability />} />
       </Routes>
     </Router>
   );

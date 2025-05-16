@@ -308,6 +308,86 @@ app.put('/api/bookings/:id', async (req, res) => {
   }
 });
 
+// Get all availability slots for a driver
+app.get('/api/driver-availability/:driverId', async (req, res) => {
+  const { driverId } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM driver_availability WHERE driver_id = $1 ORDER BY start_time',
+      [driverId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a new availability slot for a driver
+app.post('/api/driver-availability', async (req, res) => {
+  const { driver_id, start_time, end_time } = req.body;
+  if (!driver_id || !start_time || !end_time) {
+    return res.status(400).json({ error: 'All fields are required.' });
+  }
+  try {
+    // Check for overlap
+    const overlap = await pool.query(
+      `SELECT 1 FROM driver_availability WHERE driver_id = $1 AND NOT (end_time <= $2 OR start_time >= $3)`,
+      [driver_id, start_time, end_time]
+    );
+    if (overlap.rows.length > 0) {
+      return res.status(400).json({ error: 'This slot overlaps with an existing availability slot.' });
+    }
+    const result = await pool.query(
+      'INSERT INTO driver_availability (driver_id, start_time, end_time) VALUES ($1, $2, $3) RETURNING *',
+      [driver_id, start_time, end_time]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update an availability slot (for drag-and-drop/resize)
+app.patch('/api/driver-availability/:id', async (req, res) => {
+  const { id } = req.params;
+  const { start_time, end_time } = req.body;
+  if (!start_time || !end_time) {
+    return res.status(400).json({ error: 'Start and end time required.' });
+  }
+  try {
+    // Get driver_id for this slot
+    const slotRes = await pool.query('SELECT driver_id FROM driver_availability WHERE id = $1', [id]);
+    if (slotRes.rows.length === 0) return res.status(404).json({ error: 'Slot not found' });
+    const driver_id = slotRes.rows[0].driver_id;
+    // Check for overlap (exclude this slot)
+    const overlap = await pool.query(
+      `SELECT 1 FROM driver_availability WHERE driver_id = $1 AND id != $2 AND NOT (end_time <= $3 OR start_time >= $4)`,
+      [driver_id, id, start_time, end_time]
+    );
+    if (overlap.rows.length > 0) {
+      return res.status(400).json({ error: 'This slot overlaps with an existing availability slot.' });
+    }
+    const result = await pool.query(
+      'UPDATE driver_availability SET start_time = $1, end_time = $2 WHERE id = $3 RETURNING *',
+      [start_time, end_time, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete an availability slot
+app.delete('/api/driver-availability/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM driver_availability WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
