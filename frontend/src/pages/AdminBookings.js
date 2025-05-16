@@ -42,6 +42,7 @@ export default function AdminBookings() {
               <TableCell>User</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Vehicle</TableCell>
+              <TableCell>Driver</TableCell>
               <TableCell>Start</TableCell>
               <TableCell>End</TableCell>
               <TableCell>Status</TableCell>
@@ -55,6 +56,7 @@ export default function AdminBookings() {
                 <TableCell>{b.user_name}</TableCell>
                 <TableCell>{b.user_email}</TableCell>
                 <TableCell>{b.vehicle_model}</TableCell>
+                <TableCell>{b.driver_name ? `${b.driver_name} (${b.driver_email})` : 'N/A'}</TableCell>
                 <TableCell>{b.start_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.end_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.status}</TableCell>

@@ -39,6 +39,7 @@ export default function Navbar() {
   };
 
   const isAdmin = user && user.role && user.role.trim().toLowerCase() === 'admin';
+  const isDriver = user && user.role && user.role.trim().toLowerCase() === 'driver';
   const isLoggedIn = !!user;
 
   return (
@@ -51,9 +52,9 @@ export default function Navbar() {
         <Button color="inherit" component={Link} to="/vehicles">Vehicles</Button>
         {isLoggedIn && (
           <>
-            <Button color="inherit" component={Link} to="/booking">Book Now</Button>
+            {!isDriver && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
             <Button color="inherit" component={Link} to="/profile">Profile</Button>
-            <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
+            <Button color="inherit" component={Link} to={isDriver ? "/driver-dashboard" : "/dashboard"}>Dashboard</Button>
             {isAdmin && (
               <>
                 <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>

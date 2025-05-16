@@ -23,11 +23,14 @@ export default function LoginForm() {
       });
       if (res.ok) {
         const data = await res.json();
-        // Save token and user info in localStorage (or sessionStorage)
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        // Redirect to dashboard or home
-        navigate('/Dashboard');
+        // Redirect based on role
+        if (data.user.role && data.user.role.trim().toLowerCase() === 'driver') {
+          navigate('/driver-dashboard');
+        } else {
+          navigate('/Dashboard');
+        }
       } else {
         const err = await res.json();
         setError(err.error || 'Invalid credentials');

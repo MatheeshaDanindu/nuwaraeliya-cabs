@@ -6,10 +6,12 @@ import { useNavigate } from 'react-router-dom';
 export default function Booking() {
   const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [form, setForm] = useState({
     vehicleId: '',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    driverId: ''
   });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -23,9 +25,9 @@ export default function Booking() {
     }
   }, [navigate]);
 
-  // Fetch available vehicles when dates change
+  // Fetch available vehicles and drivers when dates change
   useEffect(() => {
-    async function fetchVehicles() {
+    async function fetchVehiclesAndDrivers() {
       let url = 'http://localhost:5000/api/vehicles';
       if (form.startDate && form.endDate) {
         url = `http://localhost:5000/api/vehicles/available?start=${encodeURIComponent(form.startDate)}&end=${encodeURIComponent(form.endDate)}`;
@@ -36,8 +38,15 @@ export default function Booking() {
       } else {
         setVehicles([]);
       }
+      // Fetch drivers
+      const driversRes = await fetch('http://localhost:5000/api/users?role=driver');
+      if (driversRes.ok) {
+        setDrivers(await driversRes.json());
+      } else {
+        setDrivers([]);
+      }
     }
-    fetchVehicles();
+    fetchVehiclesAndDrivers();
   }, [form.startDate, form.endDate]);
 
   const handleChange = e => {
@@ -65,12 +74,13 @@ export default function Booking() {
           vehicle_id: form.vehicleId,
           start_time: form.startDate,
           end_time: form.endDate,
-          user_id: user.id
+          user_id: user.id,
+          driver_id: form.driverId
         })
       });
       if (res.ok) {
         setSuccess(true);
-        setForm({ vehicleId: '', startDate: '', endDate: '' });
+        setForm({ vehicleId: '', startDate: '', endDate: '', driverId: '' });
       } else {
         const err = await res.json();
         setError(err.error || 'Booking failed.');
@@ -100,6 +110,21 @@ export default function Booking() {
           {vehicles.length === 0 && <MenuItem value="" disabled>No vehicles available</MenuItem>}
           {vehicles.map(v => (
             <MenuItem key={v.id} value={v.id}>{v.model} ({v.number_plate})</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Select Driver"
+          name="driverId"
+          value={form.driverId || ''}
+          onChange={handleChange}
+          fullWidth
+          margin="normal"
+          required
+        >
+          {drivers.length === 0 && <MenuItem value="" disabled>No drivers available</MenuItem>}
+          {drivers.map(d => (
+            <MenuItem key={d.id} value={d.id}>{d.name} ({d.email})</MenuItem>
           ))}
         </TextField>
         <TextField

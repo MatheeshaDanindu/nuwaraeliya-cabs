@@ -166,9 +166,9 @@ app.get('/api/vehicle-unavailability', async (req, res) => {
 
 // Create a booking
 app.post('/api/bookings', async (req, res) => {
-  const { vehicle_id, start_time, end_time, user_id } = req.body;
-  if (!vehicle_id || !start_time || !end_time || !user_id) {
-    return res.status(401).json({ error: 'You must be logged in to book a vehicle.' });
+  const { vehicle_id, start_time, end_time, user_id, driver_id } = req.body;
+  if (!vehicle_id || !start_time || !end_time || !user_id || !driver_id) {
+    return res.status(401).json({ error: 'All fields including driver are required to book a vehicle.' });
   }
   try {
     // Check for overlapping bookings
@@ -187,10 +187,10 @@ app.post('/api/bookings', async (req, res) => {
     if (unavailable.rows.length > 0) {
       return res.status(400).json({ error: 'Vehicle is unavailable for the selected time.' });
     }
-    // Insert booking
+    // Insert booking with driver_id
     const result = await pool.query(
-      'INSERT INTO bookings (vehicle_id, user_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [vehicle_id, user_id, start_time, end_time, 'pending']
+      'INSERT INTO bookings (vehicle_id, user_id, driver_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [vehicle_id, user_id, driver_id, start_time, end_time, 'pending']
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -226,6 +226,18 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
+// Get users by role (e.g., all drivers)
+app.get('/api/users', async (req, res) => {
+  const { role } = req.query;
+  try {
+    if (!role) return res.status(400).json({ error: 'Role is required' });
+    const result = await pool.query('SELECT id, name, email FROM users WHERE role = $1', [role]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get bookings for a user
 app.get('/api/bookings/user/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -240,14 +252,35 @@ app.get('/api/bookings/user/:userId', async (req, res) => {
   }
 });
 
+// Get bookings for a driver (driver schedule)
+app.get('/api/bookings/driver/:driverId', async (req, res) => {
+  const { driverId } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT b.*, v.model as vehicle_model, u.name as customer_name, u.email as customer_email
+       FROM bookings b
+       JOIN vehicles v ON b.vehicle_id = v.id
+       JOIN users u ON b.user_id = u.id
+       WHERE b.driver_id = $1
+       ORDER BY b.start_time DESC`,
+      [driverId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all bookings (admin)
 app.get('/api/bookings', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT b.*, v.model as vehicle_model, u.name as user_name, u.email as user_email
+      SELECT b.*, v.model as vehicle_model, u.name as user_name, u.email as user_email,
+             d.name as driver_name, d.email as driver_email
       FROM bookings b
       JOIN vehicles v ON b.vehicle_id = v.id
       JOIN users u ON b.user_id = u.id
+      LEFT JOIN users d ON b.driver_id = d.id
       ORDER BY b.start_time DESC
     `);
     res.json(result.rows);

@@ -13,6 +13,11 @@ export default function AdminDashboard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
+  const [driverForm, setDriverForm] = useState({ name: '', email: '', password: '' });
+  const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [driverError, setDriverError] = useState('');
+  const [driverSuccess, setDriverSuccess] = useState('');
+
   useEffect(() => {
     fetchVehicles();
   }, [open]); // Refetch vehicles whenever dialog closes (after add/edit)
@@ -103,11 +108,47 @@ export default function AdminDashboard() {
     setDeleteId(null);
   };
 
+  const handleDriverFormChange = e => setDriverForm({ ...driverForm, [e.target.name]: e.target.value });
+
+  const openDriverDialog = () => {
+    setDriverForm({ name: '', email: '', password: '' });
+    setDriverError('');
+    setDriverSuccess('');
+    setDriverDialogOpen(true);
+  };
+
+  const closeDriverDialog = () => setDriverDialogOpen(false);
+
+  const handleAddDriver = async e => {
+    e.preventDefault();
+    setDriverError('');
+    setDriverSuccess('');
+    try {
+      const res = await fetch('http://localhost:5000/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...driverForm, role: 'driver' })
+      });
+      if (res.ok) {
+        setDriverSuccess('Driver added successfully!');
+        setDriverForm({ name: '', email: '', password: '' });
+      } else {
+        const err = await res.json();
+        setDriverError(err.error || 'Failed to add driver.');
+      }
+    } catch {
+      setDriverError('Network error.');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
       <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={() => handleOpen()}>
         Add Vehicle
+      </Button>
+      <Button variant="contained" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={openDriverDialog}>
+        Add Driver
       </Button>
       <Grid container spacing={2}>
         {vehicles.map(vehicle => (
@@ -161,6 +202,22 @@ export default function AdminDashboard() {
           <Button onClick={handleDeleteCancel}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">Delete</Button>
         </DialogActions>
+      </Dialog>
+      <Dialog open={driverDialogOpen} onClose={closeDriverDialog}>
+        <DialogTitle>Add Driver</DialogTitle>
+        <form onSubmit={handleAddDriver}>
+          <DialogContent>
+            <TextField label="Name" name="name" value={driverForm.name} onChange={handleDriverFormChange} fullWidth margin="normal" required />
+            <TextField label="Email" name="email" value={driverForm.email} onChange={handleDriverFormChange} fullWidth margin="normal" required />
+            <TextField label="Password" name="password" type="password" value={driverForm.password} onChange={handleDriverFormChange} fullWidth margin="normal" required />
+            {driverError && <div style={{ color: 'red' }}>{driverError}</div>}
+            {driverSuccess && <div style={{ color: 'green' }}>{driverSuccess}</div>}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeDriverDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary">Add</Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </Box>
   );
