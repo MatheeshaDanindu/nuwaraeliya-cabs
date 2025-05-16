@@ -189,8 +189,8 @@ app.post('/api/bookings', async (req, res) => {
     }
     // Insert booking
     const result = await pool.query(
-      'INSERT INTO bookings (vehicle_id, user_id, start_time, end_time) VALUES ($1, $2, $3, $4) RETURNING *',
-      [vehicle_id, user_id, start_time, end_time]
+      'INSERT INTO bookings (vehicle_id, user_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [vehicle_id, user_id, start_time, end_time, 'pending']
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -237,6 +237,41 @@ app.get('/api/bookings/user/:userId', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all bookings (admin)
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT b.*, v.model as vehicle_model, u.name as user_name, u.email as user_email
+      FROM bookings b
+      JOIN vehicles v ON b.vehicle_id = v.id
+      JOIN users u ON b.user_id = u.id
+      ORDER BY b.start_time DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update booking status (approve/cancel)
+app.put('/api/bookings/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['confirmed', 'cancelled', 'pending'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

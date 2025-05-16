@@ -55,7 +55,10 @@ export default function Navbar() {
             <Button color="inherit" component={Link} to="/profile">Profile</Button>
             <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
             {isAdmin && (
-              <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
+              <>
+                <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
+                <Button color="inherit" component={Link} to="/admin-bookings">Manage Bookings</Button>
+              </>
             )}
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
             <Dialog open={logoutDialogOpen} onClose={cancelLogout}>
