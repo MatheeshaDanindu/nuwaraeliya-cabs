@@ -49,6 +49,27 @@ export default function Profile() {
     }
   };
 
+  // Cancel booking handler for customers
+  const handleCancelBooking = async (bookingId) => {
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || 'Failed to cancel booking.');
+        return;
+      }
+      setSuccess('Booking cancelled successfully.');
+    } catch {
+      setError('Network error. Please try again.');
+    }
+  };
+
   return (
     <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>My Profile</Typography>
@@ -101,7 +122,13 @@ export default function Profile() {
       <List>
         {bookings.length === 0 && <ListItem><ListItemText primary="No bookings found." /></ListItem>}
         {bookings.map(b => (
-          <ListItem key={b.id} divider>
+          <ListItem key={b.id} divider secondaryAction={
+            b.status !== 'cancelled' && b.status !== 'completed' && (
+              <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
+                Cancel
+              </Button>
+            )
+          }>
             <ListItemText
               primary={`${b.vehicle_model || b.vehicle || ''} - ${b.start_time?.slice(0, 16).replace('T', ' ')} to ${b.end_time?.slice(0, 16).replace('T', ' ')}`}
               secondary={`Status: ${b.status || 'N/A'} | Payment: ${b.payment_status || 'N/A'}`}

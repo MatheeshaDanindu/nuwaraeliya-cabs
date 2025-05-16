@@ -48,6 +48,30 @@ export default function DriverDashboard() {
     }
   };
 
+  // Customer cancel booking
+  const handleCancelBooking = async (bookingId) => {
+    setActionError('');
+    try {
+      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setActionError(err.error || 'Failed to cancel booking.');
+        return;
+      }
+      // Refresh bookings
+      const user = JSON.parse(localStorage.getItem('user'));
+      const bookingsRes = await fetch(`http://localhost:5000/api/bookings/driver/${user.id}`);
+      const data = await bookingsRes.json();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch {
+      setActionError('Network error.');
+    }
+  };
+
   const handleViewDetails = (booking) => {
     setSelectedBooking(booking);
     setDetailsOpen(true);
@@ -58,7 +82,7 @@ export default function DriverDashboard() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: 900, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>My Rides</Typography>
       {error && <Typography color="error">{error}</Typography>}
       {actionError && <Typography color="error">{actionError}</Typography>}
@@ -70,9 +94,17 @@ export default function DriverDashboard() {
             <ListItem key={b.id} divider secondaryAction={
               <Box sx={{ display: 'flex', gap: 1 }}>
                 {b.status !== 'completed' && b.status !== 'cancelled' && (
-                  <Button size="small" color="success" variant="contained" onClick={() => handleMarkCompleted(b.id)}>
-                    Mark as Completed
-                  </Button>
+                  <>
+                    <Button size="small" color="success" variant="contained" onClick={() => handleMarkCompleted(b.id)}>
+                      Mark as Completed
+                    </Button>
+                    {/* Only show Cancel button if user is a customer */}
+                    {JSON.parse(localStorage.getItem('user'))?.role === 'customer' && (
+                      <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
+                        Cancel
+                      </Button>
+                    )}
+                  </>
                 )}
                 <Button size="small" color="primary" variant="outlined" onClick={() => handleViewDetails(b)}>
                   View Details
