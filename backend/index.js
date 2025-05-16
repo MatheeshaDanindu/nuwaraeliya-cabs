@@ -111,6 +111,93 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Endpoint to get available vehicles for a date range
+app.get('/api/vehicles/available', async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
+  try {
+    // Find vehicles that are available (not booked) for the given range
+    const result = await pool.query(`
+      SELECT * FROM vehicles v
+      WHERE v.status = 'available'
+        AND v.id NOT IN (
+          SELECT b.vehicle_id FROM bookings b
+          WHERE NOT (b.end_time <= $1 OR b.start_time >= $2)
+        )
+        AND v.id NOT IN (
+          SELECT vu.vehicle_id FROM vehicle_unavailability vu
+          WHERE NOT (vu.end_time <= $1 OR vu.start_time >= $2)
+        )
+    `, [start, end]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint to add a vehicle unavailability period
+app.post('/api/vehicle-unavailability', async (req, res) => {
+  const { vehicle_id, start_time, end_time, reason } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO vehicle_unavailability (vehicle_id, start_time, end_time, reason) VALUES ($1, $2, $3, $4) RETURNING *',
+      [vehicle_id, start_time, end_time, reason]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Endpoint to get unavailable vehicles for a date range
+app.get('/api/vehicle-unavailability', async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
+  try {
+    const result = await pool.query(
+      'SELECT vehicle_id FROM vehicle_unavailability WHERE NOT (end_time <= $1 OR start_time >= $2)',
+      [start, end]
+    );
+    res.json(result.rows.map(r => r.vehicle_id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a booking
+app.post('/api/bookings', async (req, res) => {
+  const { vehicle_id, start_time, end_time, user_id } = req.body;
+  if (!vehicle_id || !start_time || !end_time || !user_id) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+  try {
+    // Check for overlapping bookings
+    const overlap = await pool.query(
+      `SELECT 1 FROM bookings WHERE vehicle_id = $1 AND NOT (end_time <= $2 OR start_time >= $3)`,
+      [vehicle_id, start_time, end_time]
+    );
+    if (overlap.rows.length > 0) {
+      return res.status(400).json({ error: 'Vehicle is already booked for the selected time.' });
+    }
+    // Check for vehicle unavailability
+    const unavailable = await pool.query(
+      `SELECT 1 FROM vehicle_unavailability WHERE vehicle_id = $1 AND NOT (end_time <= $2 OR start_time >= $3)`,
+      [vehicle_id, start_time, end_time]
+    );
+    if (unavailable.rows.length > 0) {
+      return res.status(400).json({ error: 'Vehicle is unavailable for the selected time.' });
+    }
+    // Insert booking
+    const result = await pool.query(
+      'INSERT INTO bookings (vehicle_id, user_id, start_time, end_time) VALUES ($1, $2, $3, $4) RETURNING *',
+      [vehicle_id, user_id, start_time, end_time]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

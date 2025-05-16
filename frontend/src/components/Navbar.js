@@ -1,12 +1,25 @@
 // src/components/Navbar.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Navbar() {
+  const location = useLocation();
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    setUser(stored ? JSON.parse(stored) : null);
+  }, [location]);
+
+  const isAdmin = user && user.role && user.role.trim().toLowerCase() === 'admin';
+
   return (
     <AppBar position="sticky" color="primary" elevation={2}>
       <Toolbar>
@@ -19,6 +32,9 @@ export default function Navbar() {
         <Button color="inherit" component={Link} to="/profile">Profile</Button>
         <Button color="inherit" component={Link} to="/login">Login</Button>
         <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
+        {isAdmin && (
+          <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
+        )}
       </Toolbar>
     </AppBar>
   );

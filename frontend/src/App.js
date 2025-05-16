@@ -9,6 +9,7 @@ import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import AdminDashboard from './pages/AdminDashboard';
 import Dashboard from './components/Dashboard';
+import VehicleUnavailabilityAdmin from './pages/VehicleUnavailabilityAdmin';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -31,6 +32,7 @@ function App() {
         <Route path="/register" element={<RegisterForm />} />
         <Route path="/AdminDashboard" element={<AdminDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/vehicle-unavailability-admin" element={<VehicleUnavailabilityAdmin />} />
       </Routes>
     </Router>
   );
