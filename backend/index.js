@@ -3,6 +3,7 @@ const cors = require('cors');
 const pool = require('./db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 // Initialize Express app FIRST
@@ -17,6 +18,18 @@ app.use(cors(corsOptions));  // <-- Only CORS configuration needed
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
+
+// Configure nodemailer transporter (example with Gmail, use env vars in production)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -282,7 +295,31 @@ app.post('/api/bookings', async (req, res) => {
       'INSERT INTO bookings (vehicle_id, user_id, driver_id, package_id, start_time, end_time, status, advance_paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [vehicle_id, user_id, driver_id, package_id, start_time, end_time, 'pending', advance]
     );
-    res.json(result.rows[0]);
+    const booking = result.rows[0];
+    // Fetch user email
+    const userRes = await pool.query('SELECT name, email FROM users WHERE id = $1', [user_id]);
+    const user = userRes.rows[0];
+    // Fetch vehicle info
+    const vehicleRes = await pool.query('SELECT model, number_plate FROM vehicles WHERE id = $1', [vehicle_id]);
+    const vehicle = vehicleRes.rows[0];
+    // Fetch package info
+    const pkgInfoRes = await pool.query('SELECT name, price, price_unit FROM packages WHERE id = $1', [package_id]);
+    const pkgInfo = pkgInfoRes.rows[0];
+    // Send confirmation email (wait for result)
+    if (user && user.email) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Your Cab Booking Confirmation',
+        text: `Dear ${user.name},\n\nYour booking is confirmed!\n\nVehicle: ${vehicle.model} (${vehicle.number_plate})\nPackage: ${pkgInfo.name} - Rs. ${pkgInfo.price}/${pkgInfo.price_unit}\nStart: ${start_time}\nEnd: ${end_time}\n\nThank you for booking with us!`,
+      };
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (err) {
+        return res.status(500).json({ error: 'Booking saved, but failed to send confirmation email: ' + err.message });
+      }
+    }
+    res.json({ ...booking, emailSent: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

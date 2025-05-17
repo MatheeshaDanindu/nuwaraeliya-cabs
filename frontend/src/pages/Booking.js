@@ -119,8 +119,13 @@ export default function Booking() {
         })
       });
       if (res.ok) {
-        setSuccess(true);
-        setForm({ vehicleId: '', startDate: '', endDate: '', driverId: '', packageId: '' });
+        const booking = await res.json();
+        if (booking.emailSent) {
+          setSuccess(true);
+          setForm({ vehicleId: '', startDate: '', endDate: '', driverId: '', packageId: '' });
+        } else {
+          setError('Booking saved, but confirmation email was not sent.');
+        }
       } else {
         const err = await res.json();
         setError(err.error || 'Booking failed.');
