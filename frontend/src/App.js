@@ -13,6 +13,7 @@ import VehicleUnavailabilityAdmin from './pages/VehicleUnavailabilityAdmin';
 import AdminBookings from './pages/AdminBookings';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverAvailability from './pages/DriverAvailability';
+import VehicleDetails from './pages/VehicleDetails';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -29,6 +30,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/vehicles" element={<Vehicles />} />
+        <Route path="/vehicles/:id" element={<VehicleDetails />} />
         <Route path="/booking" element={<Booking />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<LoginForm />} />

@@ -1,0 +1,108 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Typography, Card, CardContent, CardHeader, Divider, Button, Grid, Paper, Rating } from '@mui/material';
+
+export default function VehicleDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [vehicle, setVehicle] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      // Fetch vehicle details
+      const vRes = await fetch(`http://localhost:5000/api/vehicles`);
+      const vData = vRes.ok ? await vRes.json() : [];
+      const found = vData.find(v => String(v.id) === String(id));
+      setVehicle(found || null);
+      // Fetch packages
+      const pRes = await fetch(`http://localhost:5000/api/vehicles/${id}/packages`);
+      setPackages(pRes.ok ? await pRes.json() : []);
+      // Fetch reviews for all drivers of this vehicle (aggregate by driver)
+      // First, get all bookings for this vehicle with driver_id
+      const bRes = await fetch(`http://localhost:5000/api/bookings`);
+      const bookings = bRes.ok ? await bRes.json() : [];
+      const driverIds = [...new Set(bookings.filter(b => String(b.vehicle_id) === String(id) && b.driver_id).map(b => b.driver_id))];
+      // Fetch reviews for each driver
+      let allReviews = [];
+      for (let driverId of driverIds) {
+        const rRes = await fetch(`http://localhost:5000/api/driver-reviews/${driverId}`);
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          allReviews = allReviews.concat(rData.map(r => ({ ...r, driver_id: driverId })));
+        }
+      }
+      setReviews(allReviews);
+      setLoading(false);
+    }
+    fetchData();
+  }, [id]);
+
+  if (loading) return <Box sx={{ p: 4 }}><Typography>Loading...</Typography></Box>;
+  if (!vehicle) return <Box sx={{ p: 4 }}><Typography color="error">Vehicle not found.</Typography></Box>;
+
+  return (
+    <Box sx={{ maxWidth: 900, mx: 'auto', mt: 4 }}>
+      <Typography variant="h4" gutterBottom>Vehicle Details</Typography>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5">{vehicle.model}</Typography>
+        <Typography>Number Plate: {vehicle.number_plate}</Typography>
+        <Typography>Capacity: {vehicle.capacity}</Typography>
+        <Typography>Status: {vehicle.status}</Typography>
+        <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={() => navigate(`/booking?vehicle=${vehicle.id}`)}>
+          Book Now
+        </Button>
+      </Paper>
+      <Typography variant="h5" gutterBottom>Trip Packages</Typography>
+      {packages.length === 0 ? (
+        <Typography>No packages for this vehicle.</Typography>
+      ) : (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {packages.map(pkg => (
+            <Grid item xs={12} md={6} key={pkg.id}>
+              <Card sx={{ background: '#f5f5f5' }}>
+                <CardHeader title={pkg.name} />
+                <Divider />
+                <CardContent>
+                  <Typography variant="subtitle1" color="primary">
+                    Rs. {pkg.price.toLocaleString()} / {pkg.price_unit}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Includes: {pkg.included_km} {pkg.km_unit}
+                  </Typography>
+                  {pkg.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {pkg.description}
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+      <Typography variant="h5" gutterBottom>Driver Reviews</Typography>
+      {reviews.length === 0 ? (
+        <Typography>No reviews for drivers of this vehicle.</Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {reviews.map((review, idx) => (
+            <Grid item xs={12} md={6} key={idx}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle2">Driver ID: {review.driver_id}</Typography>
+                  <Rating value={review.rating} readOnly max={5} />
+                  <Typography variant="body2">{review.comment}</Typography>
+                  <Typography variant="caption" color="text.secondary">{review.created_at ? new Date(review.created_at).toLocaleString() : ''}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </Box>
+  );
+}

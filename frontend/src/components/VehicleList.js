@@ -1,11 +1,13 @@
 // src/components/VehicleList.js
 import React, { useEffect, useState } from 'react';
 import { Grid, Card, CardContent, CardMedia, Typography, Button, Box, TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 export default function VehicleList() {
   const [vehicles, setVehicles] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [dates, setDates] = useState({ start: '', end: '' });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('http://localhost:5000/api/vehicles')
@@ -66,7 +68,10 @@ export default function VehicleList() {
       <Grid container spacing={3} sx={{ padding: 4 }}>
         {filtered.map(vehicle => (
           <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
-            <Card>
+            <Card
+              sx={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+            >
               <CardMedia
                 component="img"
                 height="160"
@@ -86,6 +91,7 @@ export default function VehicleList() {
                   href={`/booking?vehicle=${vehicle.id}`}
                   disabled={vehicle.status !== 'available'}
                   sx={{ mt: 2 }}
+                  onClick={e => { e.stopPropagation(); navigate(`/booking?vehicle=${vehicle.id}`); }}
                 >
                   Book Now
                 </Button>
