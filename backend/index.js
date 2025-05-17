@@ -78,6 +78,78 @@ app.delete('/api/vehicles/:id', async (req, res) => {
   }
 });
 
+// --- Trip Packages Endpoints ---
+// Get all packages for a vehicle
+app.get('/api/vehicles/:vehicleId/packages', async (req, res) => {
+  const { vehicleId } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM packages WHERE vehicle_id = $1 ORDER BY price',
+      [vehicleId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a package for a vehicle
+app.post('/api/vehicles/:vehicleId/packages', async (req, res) => {
+  const { vehicleId } = req.params;
+  const { name, description, price, price_unit, included_km, km_unit } = req.body;
+  if (!name || !price || !price_unit || !included_km || !km_unit) {
+    return res.status(400).json({ error: 'All fields except description are required.' });
+  }
+  try {
+    const result = await pool.query(
+      'INSERT INTO packages (vehicle_id, name, description, price, price_unit, included_km, km_unit) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [vehicleId, name, description || '', price, price_unit, included_km, km_unit]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update a package
+app.put('/api/packages/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, description, price, price_unit, included_km, km_unit } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE packages SET name = $1, description = $2, price = $3, price_unit = $4, included_km = $5, km_unit = $6 WHERE id = $7 RETURNING *',
+      [name, description, price, price_unit, included_km, km_unit, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Package not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a package
+app.delete('/api/packages/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM packages WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get a single package by id
+app.get('/api/packages/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM packages WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Package not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -166,9 +238,9 @@ app.get('/api/vehicle-unavailability', async (req, res) => {
 
 // Create a booking
 app.post('/api/bookings', async (req, res) => {
-  const { vehicle_id, start_time, end_time, user_id, driver_id } = req.body;
-  if (!vehicle_id || !start_time || !end_time || !user_id || !driver_id) {
-    return res.status(401).json({ error: 'All fields including driver are required to book a vehicle.' });
+  const { vehicle_id, start_time, end_time, user_id, driver_id, package_id } = req.body;
+  if (!vehicle_id || !start_time || !end_time || !user_id || !driver_id || !package_id) {
+    return res.status(401).json({ error: 'All fields including driver and package are required to book a vehicle.' });
   }
   try {
     // Check for overlapping bookings
@@ -187,10 +259,10 @@ app.post('/api/bookings', async (req, res) => {
     if (unavailable.rows.length > 0) {
       return res.status(400).json({ error: 'Vehicle is unavailable for the selected time.' });
     }
-    // Insert booking with driver_id
+    // Insert booking with driver_id and package_id
     const result = await pool.query(
-      'INSERT INTO bookings (vehicle_id, user_id, driver_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [vehicle_id, user_id, driver_id, start_time, end_time, 'pending']
+      'INSERT INTO bookings (vehicle_id, user_id, driver_id, package_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [vehicle_id, user_id, driver_id, package_id, start_time, end_time, 'pending']
     );
     res.json(result.rows[0]);
   } catch (err) {

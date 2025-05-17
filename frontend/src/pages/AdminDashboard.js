@@ -1,6 +1,6 @@
 // src/pages/AdminDashboard.js
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem } from '@mui/material';
+import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, Card, CardContent, CardHeader, Divider } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -17,6 +17,16 @@ export default function AdminDashboard() {
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   const [driverError, setDriverError] = useState('');
   const [driverSuccess, setDriverSuccess] = useState('');
+
+  // --- Package Management State ---
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [packages, setPackages] = useState([]);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
+  const [packageEditMode, setPackageEditMode] = useState(false);
+  const [packageForm, setPackageForm] = useState({
+    id: null, name: '', description: '', price: '', price_unit: 'Day', included_km: '', km_unit: 'Day'
+  });
+  const [packageError, setPackageError] = useState('');
 
   useEffect(() => {
     fetchVehicles();
@@ -141,6 +151,67 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch packages for selected vehicle
+  useEffect(() => {
+    if (!selectedVehicleId) { setPackages([]); return; }
+    fetch(`http://localhost:5000/api/vehicles/${selectedVehicleId}/packages`)
+      .then(res => res.json())
+      .then(data => setPackages(Array.isArray(data) ? data : []));
+  }, [selectedVehicleId, packageDialogOpen]);
+
+  // Handlers for package management
+  const handleVehicleSelect = e => setSelectedVehicleId(e.target.value);
+  const handlePackageDialogOpen = (pkg = null) => {
+    if (pkg) {
+      setPackageEditMode(true);
+      setPackageForm({ ...pkg, price: pkg.price, included_km: pkg.included_km });
+    } else {
+      setPackageEditMode(false);
+      setPackageForm({ id: null, name: '', description: '', price: '', price_unit: 'Day', included_km: '', km_unit: 'Day' });
+    }
+    setPackageError('');
+    setPackageDialogOpen(true);
+  };
+  const handlePackageDialogClose = () => setPackageDialogOpen(false);
+  const handlePackageFormChange = e => setPackageForm({ ...packageForm, [e.target.name]: e.target.value });
+  const handlePackageDelete = async id => {
+    if (!window.confirm('Delete this package?')) return;
+    await fetch(`http://localhost:5000/api/packages/${id}`, { method: 'DELETE' });
+    setPackages(pkgs => pkgs.filter(p => p.id !== id));
+  };
+  const handlePackageSubmit = async e => {
+    e.preventDefault();
+    setPackageError('');
+    if (!packageForm.name || !packageForm.price || !packageForm.price_unit || !packageForm.included_km || !packageForm.km_unit) {
+      setPackageError('All fields except description are required.');
+      return;
+    }
+    const payload = {
+      name: packageForm.name,
+      description: packageForm.description,
+      price: packageForm.price,
+      price_unit: packageForm.price_unit,
+      included_km: packageForm.included_km,
+      km_unit: packageForm.km_unit
+    };
+    let res;
+    if (packageEditMode) {
+      res = await fetch(`http://localhost:5000/api/packages/${packageForm.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`http://localhost:5000/api/vehicles/${selectedVehicleId}/packages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+    }
+    if (res.ok) {
+      setPackageDialogOpen(false);
+    } else {
+      const err = await res.json();
+      setPackageError(err.error || 'Failed to save package.');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
@@ -219,6 +290,86 @@ export default function AdminDashboard() {
           </DialogActions>
         </form>
       </Dialog>
+      {/* --- Admin Package Management --- */}
+      <Box sx={{ mt: 5 }}>
+        <Typography variant="h5" gutterBottom>Manage Packages</Typography>
+        <TextField
+          select
+          label="Select Vehicle"
+          value={selectedVehicleId}
+          onChange={handleVehicleSelect}
+          fullWidth
+          margin="normal"
+        >
+          <MenuItem value="">-- Select a vehicle --</MenuItem>
+          {vehicles.map(v => (
+            <MenuItem key={v.id} value={v.id}>{v.model} ({v.number_plate})</MenuItem>
+          ))}
+        </TextField>
+        {selectedVehicleId && (
+          <Box>
+            <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={() => handlePackageDialogOpen()}>Add Package</Button>
+            {packages.length === 0 ? (
+              <Typography>No packages for this vehicle.</Typography>
+            ) : (
+              <Grid container spacing={2}>
+                {packages.map(pkg => (
+                  <Grid item xs={12} md={6} key={pkg.id}>
+                    <Card sx={{ background: '#f5f5f5' }}>
+                      <CardHeader title={pkg.name} action={
+                        <span>
+                          <IconButton color="primary" onClick={() => handlePackageDialogOpen(pkg)}><EditIcon /></IconButton>
+                          <IconButton color="error" onClick={() => handlePackageDelete(pkg.id)}><DeleteIcon /></IconButton>
+                        </span>
+                      } />
+                      <Divider />
+                      <CardContent>
+                        <Typography variant="subtitle1" color="primary">
+                          Rs. {pkg.price.toLocaleString()} / {pkg.price_unit}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          Includes: {pkg.included_km} {pkg.km_unit}
+                        </Typography>
+                        {pkg.description && (
+                          <Typography variant="body2" color="text.secondary">
+                            {pkg.description}
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        )}
+        {/* Package Add/Edit Dialog */}
+        <Dialog open={packageDialogOpen} onClose={handlePackageDialogClose}>
+          <DialogTitle>{packageEditMode ? 'Edit Package' : 'Add Package'}</DialogTitle>
+          <form onSubmit={handlePackageSubmit}>
+            <DialogContent>
+              <TextField label="Name" name="name" value={packageForm.name} onChange={handlePackageFormChange} fullWidth margin="normal" required />
+              <TextField label="Description" name="description" value={packageForm.description} onChange={handlePackageFormChange} fullWidth margin="normal" />
+              <TextField label="Price" name="price" type="number" value={packageForm.price} onChange={handlePackageFormChange} fullWidth margin="normal" required />
+              <TextField label="Price Unit" name="price_unit" value={packageForm.price_unit} onChange={handlePackageFormChange} fullWidth margin="normal" required select>
+                <MenuItem value="Day">Day</MenuItem>
+                <MenuItem value="Hour">Hour</MenuItem>
+                <MenuItem value="Trip">Trip</MenuItem>
+              </TextField>
+              <TextField label="Included KM" name="included_km" type="number" value={packageForm.included_km} onChange={handlePackageFormChange} fullWidth margin="normal" required />
+              <TextField label="KM Unit" name="km_unit" value={packageForm.km_unit} onChange={handlePackageFormChange} fullWidth margin="normal" required select>
+                <MenuItem value="Day">Day</MenuItem>
+                <MenuItem value="Trip">Trip</MenuItem>
+              </TextField>
+              {packageError && <Typography color="error">{packageError}</Typography>}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handlePackageDialogClose}>Cancel</Button>
+              <Button type="submit" variant="contained" color="primary">{packageEditMode ? 'Update' : 'Add'}</Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      </Box>
     </Box>
   );
 }
