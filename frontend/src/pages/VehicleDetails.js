@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Typography, Card, CardContent, CardHeader, Divider, Button, Grid, Paper, Rating } from '@mui/material';
+import { Box, Typography, Card, CardContent, CardHeader, Divider, Button, Grid, Paper, Rating, CardMedia } from '@mui/material';
 
 export default function VehicleDetails() {
   const { id } = useParams();
@@ -48,13 +48,26 @@ export default function VehicleDetails() {
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 4 }}>
       <Typography variant="h4" gutterBottom>Vehicle Details</Typography>
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5">{vehicle.model}</Typography>
-        <Typography>Number Plate: {vehicle.number_plate}</Typography>
-        <Typography>Capacity: {vehicle.capacity}</Typography>
-        <Typography>Status: {vehicle.status}</Typography>
-        <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={() => navigate(`/booking?vehicle=${vehicle.id}`)}>
-          Book Now
-        </Button>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <CardMedia
+              component="img"
+              height="200"
+              image={vehicle.image_url || "/images/car.png"}
+              alt={vehicle.model}
+              sx={{ borderRadius: 2, objectFit: 'cover', width: '100%' }}
+            />
+          </Grid>
+          <Grid item xs={12} md={8}>
+            <Typography variant="h5">{vehicle.model}</Typography>
+            <Typography>Number Plate: {vehicle.number_plate}</Typography>
+            <Typography>Capacity: {vehicle.capacity}</Typography>
+            <Typography>Status: {vehicle.status}</Typography>
+            <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={() => navigate(`/booking?vehicle=${vehicle.id}`)}>
+              Book Now
+            </Button>
+          </Grid>
+        </Grid>
       </Paper>
       <Typography variant="h5" gutterBottom>Trip Packages</Typography>
       {packages.length === 0 ? (
