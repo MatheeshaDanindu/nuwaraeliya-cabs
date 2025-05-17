@@ -148,7 +148,11 @@ export default function Booking() {
           margin="normal"
           required
           disabled={!form.vehicleId || packages.length === 0}
-          helperText={form.vehicleId && packages.length === 0 ? 'No packages for this vehicle' : ''}
+          error={!!error && !form.packageId}
+          helperText={
+            !form.vehicleId ? 'Select a vehicle first.' :
+            (packages.length === 0 ? 'No packages for this vehicle. Please contact admin.' : 'Choose a package for your trip.')
+          }
         >
           {packages.length === 0 && <MenuItem value="" disabled>No packages available</MenuItem>}
           {packages.map(p => (
@@ -158,31 +162,29 @@ export default function Booking() {
           ))}
         </TextField>
         {/* Detailed package display */}
-        {form.packageId && packages.length > 0 && (
-          (() => {
-            const selected = packages.find(p => String(p.id) === String(form.packageId));
-            if (!selected) return null;
-            return (
-              <Card sx={{ my: 2, background: '#f5f5f5' }}>
-                <CardHeader title={selected.name} sx={{ pb: 0 }} />
-                <Divider />
-                <CardContent>
-                  <Typography variant="subtitle1" color="primary">
-                    Rs. {selected.price.toLocaleString()} / {selected.price_unit}
+        {form.packageId && packages.length > 0 && (() => {
+          const selected = packages.find(p => String(p.id) === String(form.packageId));
+          if (!selected) return null;
+          return (
+            <Card sx={{ my: 2, background: '#f5f5f5' }}>
+              <CardHeader title={selected.name} sx={{ pb: 0 }} />
+              <Divider />
+              <CardContent>
+                <Typography variant="subtitle1" color="primary">
+                  Rs. {selected.price.toLocaleString()} / {selected.price_unit}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Includes: {selected.included_km} {selected.km_unit}
+                </Typography>
+                {selected.description && (
+                  <Typography variant="body2" color="text.secondary">
+                    {selected.description}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    Includes: {selected.included_km} {selected.km_unit}
-                  </Typography>
-                  {selected.description && (
-                    <Typography variant="body2" color="text.secondary">
-                      {selected.description}
-                    </Typography>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()
-        )}
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
         <TextField
           select
           label="Select Driver"
@@ -220,7 +222,14 @@ export default function Booking() {
           InputLabelProps={{ shrink: true }}
           required
         />
-        <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={loading}>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          sx={{ mt: 2 }}
+          disabled={loading || !form.packageId || packages.length === 0}
+        >
           {loading ? 'Booking...' : 'Book Now'}
         </Button>
       </form>

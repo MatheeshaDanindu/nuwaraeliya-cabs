@@ -1,6 +1,6 @@
 // src/pages/AdminDashboard.js
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, Card, CardContent, CardHeader, Divider } from '@mui/material';
+import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, Card, CardContent, CardHeader, Divider, Snackbar, Alert as MuiAlert, Dialog as MuiDialog } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -27,6 +27,8 @@ export default function AdminDashboard() {
     id: null, name: '', description: '', price: '', price_unit: 'Day', included_km: '', km_unit: 'Day'
   });
   const [packageError, setPackageError] = useState('');
+  const [packageSuccess, setPackageSuccess] = useState('');
+  const [packageDeleteDialog, setPackageDeleteDialog] = useState({ open: false, id: null });
 
   useEffect(() => {
     fetchVehicles();
@@ -174,16 +176,27 @@ export default function AdminDashboard() {
   };
   const handlePackageDialogClose = () => setPackageDialogOpen(false);
   const handlePackageFormChange = e => setPackageForm({ ...packageForm, [e.target.name]: e.target.value });
-  const handlePackageDelete = async id => {
-    if (!window.confirm('Delete this package?')) return;
+  const handlePackageDelete = id => {
+    setPackageDeleteDialog({ open: true, id });
+  };
+  const confirmPackageDelete = async () => {
+    const id = packageDeleteDialog.id;
     await fetch(`http://localhost:5000/api/packages/${id}`, { method: 'DELETE' });
     setPackages(pkgs => pkgs.filter(p => p.id !== id));
+    setPackageDeleteDialog({ open: false, id: null });
+    setPackageSuccess('Package deleted successfully!');
   };
+  const cancelPackageDelete = () => setPackageDeleteDialog({ open: false, id: null });
   const handlePackageSubmit = async e => {
     e.preventDefault();
     setPackageError('');
+    setPackageSuccess('');
     if (!packageForm.name || !packageForm.price || !packageForm.price_unit || !packageForm.included_km || !packageForm.km_unit) {
       setPackageError('All fields except description are required.');
+      return;
+    }
+    if (Number(packageForm.price) <= 0 || Number(packageForm.included_km) <= 0) {
+      setPackageError('Price and Included KM must be positive numbers.');
       return;
     }
     const payload = {
@@ -206,6 +219,7 @@ export default function AdminDashboard() {
     }
     if (res.ok) {
       setPackageDialogOpen(false);
+      setPackageSuccess(packageEditMode ? 'Package updated successfully!' : 'Package added successfully!');
     } else {
       const err = await res.json();
       setPackageError(err.error || 'Failed to save package.');
@@ -369,6 +383,19 @@ export default function AdminDashboard() {
             </DialogActions>
           </form>
         </Dialog>
+        <MuiDialog open={packageDeleteDialog.open} onClose={cancelPackageDelete}>
+          <DialogTitle>Delete Package</DialogTitle>
+          <DialogContent>Are you sure you want to delete this package?</DialogContent>
+          <DialogActions>
+            <Button onClick={cancelPackageDelete}>Cancel</Button>
+            <Button onClick={confirmPackageDelete} color="error" variant="contained">Delete</Button>
+          </DialogActions>
+        </MuiDialog>
+        <Snackbar open={!!packageSuccess} autoHideDuration={3000} onClose={() => setPackageSuccess('')} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+          <MuiAlert onClose={() => setPackageSuccess('')} severity="success" sx={{ width: '100%' }}>
+            {packageSuccess}
+          </MuiAlert>
+        </Snackbar>
       </Box>
     </Box>
   );
