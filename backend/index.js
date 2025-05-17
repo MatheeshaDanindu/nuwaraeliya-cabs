@@ -150,6 +150,20 @@ app.get('/api/packages/:id', async (req, res) => {
   }
 });
 
+// Calculate advance payment for a package (e.g., 20% of package price)
+function calculateAdvance(packageObj) {
+  return Math.round((Number(packageObj.price) * 0.2) * 100) / 100;
+}
+
+// Endpoint to get advance payment for a package
+app.get('/api/packages/:id/advance', async (req, res) => {
+  const { id } = req.params;
+  const pkg = await pool.query('SELECT * FROM packages WHERE id = $1', [id]);
+  if (!pkg.rows.length) return res.status(404).json({ error: 'Package not found' });
+  const advance = calculateAdvance(pkg.rows[0]);
+  res.json({ advance });
+});
+
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -259,15 +273,60 @@ app.post('/api/bookings', async (req, res) => {
     if (unavailable.rows.length > 0) {
       return res.status(400).json({ error: 'Vehicle is unavailable for the selected time.' });
     }
-    // Insert booking with driver_id and package_id
+    // Get package and calculate advance
+    const pkg = await pool.query('SELECT * FROM packages WHERE id = $1', [package_id]);
+    if (!pkg.rows.length) return res.status(400).json({ error: 'Invalid package' });
+    const advance = calculateAdvance(pkg.rows[0]);
+    // Insert booking with advance_paid
     const result = await pool.query(
-      'INSERT INTO bookings (vehicle_id, user_id, driver_id, package_id, start_time, end_time, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [vehicle_id, user_id, driver_id, package_id, start_time, end_time, 'pending']
+      'INSERT INTO bookings (vehicle_id, user_id, driver_id, package_id, start_time, end_time, status, advance_paid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [vehicle_id, user_id, driver_id, package_id, start_time, end_time, 'pending', advance]
     );
     res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// Admin: Set trip start meter and time
+app.put('/api/bookings/:id/start', async (req, res) => {
+  const { id } = req.params;
+  const { start_meter, actual_start_time } = req.body;
+  if (start_meter == null || !actual_start_time) return res.status(400).json({ error: 'Start meter and time required' });
+  const result = await pool.query(
+    'UPDATE bookings SET start_meter = $1, actual_start_time = $2 WHERE id = $3 RETURNING *',
+    [start_meter, actual_start_time, id]
+  );
+  res.json(result.rows[0]);
+});
+
+// Admin: Set trip end meter and time, calculate total fee
+app.put('/api/bookings/:id/end', async (req, res) => {
+  const { id } = req.params;
+  const { end_meter, actual_end_time } = req.body;
+  if (end_meter == null || !actual_end_time) return res.status(400).json({ error: 'End meter and time required' });
+  // Get booking, package
+  const bookingRes = await pool.query('SELECT * FROM bookings WHERE id = $1', [id]);
+  if (!bookingRes.rows.length) return res.status(404).json({ error: 'Booking not found' });
+  const booking = bookingRes.rows[0];
+  const pkgRes = await pool.query('SELECT * FROM packages WHERE id = $1', [booking.package_id]);
+  if (!pkgRes.rows.length) return res.status(400).json({ error: 'Package not found' });
+  const pkg = pkgRes.rows[0];
+  // Calculate trip details
+  const total_km = end_meter - (booking.start_meter || 0);
+  let total_hours = (new Date(actual_end_time) - new Date(booking.actual_start_time || booking.start_time)) / (1000 * 60 * 60);
+  total_hours = Math.round(total_hours * 100) / 100; // Round to 2 decimal places
+  const extra_km = Math.max(0, total_km - (pkg.included_km || 0));
+  const extra_hours = Math.max(0, total_hours - (pkg.included_hours || 0));
+  const extra_km_fee = extra_km * (pkg.per_km_rate || 0);
+  const extra_hour_fee = extra_hours * (pkg.per_hour_rate || 0);
+  const total_fee = Number(pkg.price) + extra_km_fee + extra_hour_fee;
+  // Update booking
+  const result = await pool.query(
+    'UPDATE bookings SET end_meter = $1, actual_end_time = $2, total_fee = $3 WHERE id = $4 RETURNING *',
+    [end_meter, actual_end_time, total_fee, id]
+  );
+  res.json({ ...result.rows[0], total_km, total_hours, extra_km, extra_hours, extra_km_fee, extra_hour_fee });
 });
 
 // Get user profile

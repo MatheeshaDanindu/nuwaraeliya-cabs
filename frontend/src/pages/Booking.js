@@ -8,6 +8,7 @@ export default function Booking() {
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [advance, setAdvance] = useState(null);
   const [form, setForm] = useState({
     vehicleId: '',
     startDate: '',
@@ -67,6 +68,20 @@ export default function Booking() {
     fetchPackages();
     // eslint-disable-next-line
   }, [form.vehicleId]);
+
+  // Fetch advance when package changes
+  useEffect(() => {
+    async function fetchAdvance() {
+      setAdvance(null);
+      if (!form.packageId) return;
+      const res = await fetch(`http://localhost:5000/api/packages/${form.packageId}/advance`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdvance(data.advance);
+      }
+    }
+    fetchAdvance();
+  }, [form.packageId]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -185,6 +200,12 @@ export default function Booking() {
             </Card>
           );
         })()}
+        {/* Show advance payment info */}
+        {advance !== null && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Advance Payment Required: <b>Rs. {advance.toLocaleString()}</b>
+          </Alert>
+        )}
         <TextField
           select
           label="Select Driver"
