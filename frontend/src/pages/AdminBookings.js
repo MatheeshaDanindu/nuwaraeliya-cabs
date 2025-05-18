@@ -125,7 +125,7 @@ export default function AdminBookings() {
                 <TableCell>{b.start_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.end_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.status}</TableCell>
-                <TableCell>{b.advance_paid ? `Rs. ${Number(b.advance_paid).toLocaleString()}` : '-'}</TableCell>
+                <TableCell>{b.payment_status === 'paid' && b.advance_paid ? `Rs. ${Number(b.advance_paid).toLocaleString()}` : '-'}</TableCell>
                 <TableCell>{b.total_fee ? `Rs. ${Number(b.total_fee).toLocaleString()}` : '-'}</TableCell>
                 <TableCell>{b.total_fee && b.advance_paid ? `Rs. ${(Number(b.total_fee) - Number(b.advance_paid)).toLocaleString()}` : '-'}</TableCell>
                 <TableCell>

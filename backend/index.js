@@ -143,7 +143,7 @@ app.post('/api/pay', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `http://localhost:3000/success?bookingId=${bookingId}`,
+      success_url: `http://localhost:3000/success?bookingId=${bookingId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `http://localhost:3000/cancel`,
       metadata: { amount, bookingId, status }
     });
@@ -526,11 +526,18 @@ app.put('/api/bookings/:id', async (req, res) => {
 // Confirm payment and send confirmation email
 app.post('/api/bookings/:id/confirm-payment', async (req, res) => {
   const { id } = req.params;
+  const { payment_intent, receipt_url, amount } = req.body; // Accept payment details from frontend/Stripe webhook
   try {
-    // Update booking status to confirmed
+    // Fetch the current advance_paid value
+    const current = await pool.query('SELECT advance_paid FROM bookings WHERE id = $1', [id]);
+    let advance = amount;
+    if (current.rows.length > 0 && current.rows[0].advance_paid != null) {
+      advance = current.rows[0].advance_paid;
+    }
+    // Update booking with payment details and set status to confirmed
     const result = await pool.query(
-      'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
-      ['confirmed', id]
+      'UPDATE bookings SET status = $1, payment_status = $2, payment_intent_id = $3, advance_paid = $4, payment_receipt_url = $5, paid_at = NOW() WHERE id = $6 RETURNING *',
+      ['confirmed', 'paid', payment_intent, advance, receipt_url, id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     const booking = result.rows[0];
@@ -541,13 +548,13 @@ app.post('/api/bookings/:id/confirm-payment', async (req, res) => {
     const vehicle = vehicleRes.rows[0];
     const pkgInfoRes = await pool.query('SELECT name, price, price_unit FROM packages WHERE id = $1', [booking.package_id]);
     const pkgInfo = pkgInfoRes.rows[0];
-    // Send confirmation email
+    // Send confirmation email with receipt link
     if (user && user.email) {
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: user.email,
-        subject: 'Your Cab Booking Confirmation',
-        text: `Dear ${user.name},\n\nYour booking is confirmed!\n\nVehicle: ${vehicle.model} (${vehicle.number_plate})\nPackage: ${pkgInfo.name} - Rs. ${pkgInfo.price}/${pkgInfo.price_unit}\nStart: ${booking.start_time}\nEnd: ${booking.end_time}\n\nThank you for booking with us!`,
+        subject: 'Your Cab Booking Payment Receipt',
+        text: `Dear ${user.name},\n\nYour booking is confirmed and payment received!\n\nVehicle: ${vehicle.model} (${vehicle.number_plate})\nPackage: ${pkgInfo.name} - Rs. ${pkgInfo.price}/${pkgInfo.price_unit}\nStart: ${booking.start_time}\nEnd: ${booking.end_time}\n\nPayment Receipt: ${receipt_url}\n\nThank you for booking with us!`,
       };
       try {
         await transporter.sendMail(mailOptions);
