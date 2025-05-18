@@ -758,6 +758,38 @@ app.delete('/api/driver-availability/:id', async (req, res) => {
   }
 });
 
+// Admin reports: summary stats
+app.get('/api/reports/summary', async (req, res) => {
+  try {
+    const totalBookings = await pool.query('SELECT COUNT(*) FROM bookings');
+    const totalCancellations = await pool.query("SELECT COUNT(*) FROM bookings WHERE status = 'cancelled'");
+    const totalRevenue = await pool.query("SELECT COALESCE(SUM(advance_paid),0) FROM bookings WHERE payment_status = 'paid'");
+    res.json({
+      totalBookings: Number(totalBookings.rows[0].count),
+      totalCancellations: Number(totalCancellations.rows[0].count),
+      totalRevenue: Number(totalRevenue.rows[0].coalesce)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin reports: vehicle usage
+app.get('/api/reports/vehicle-usage', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT v.id, v.model, COUNT(b.id) as booking_count
+      FROM vehicles v
+      LEFT JOIN bookings b ON v.id = b.vehicle_id AND b.status != 'cancelled'
+      GROUP BY v.id, v.model
+      ORDER BY booking_count DESC, v.model
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
 

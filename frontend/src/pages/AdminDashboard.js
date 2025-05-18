@@ -30,9 +30,33 @@ export default function AdminDashboard() {
   const [packageSuccess, setPackageSuccess] = useState('');
   const [packageDeleteDialog, setPackageDeleteDialog] = useState({ open: false, id: null });
 
+  // --- Admin Reports State ---
+  const [report, setReport] = useState({ totalBookings: 0, totalCancellations: 0, totalRevenue: 0 });
+  const [vehicleUsage, setVehicleUsage] = useState([]);
+  const [reportLoading, setReportLoading] = useState(true);
+  const [reportError, setReportError] = useState('');
+
   useEffect(() => {
     fetchVehicles();
   }, [open]); // Refetch vehicles whenever dialog closes (after add/edit)
+
+  useEffect(() => {
+    async function fetchReports() {
+      setReportLoading(true);
+      setReportError('');
+      try {
+        const summaryRes = await fetch('http://localhost:5000/api/reports/summary');
+        const usageRes = await fetch('http://localhost:5000/api/reports/vehicle-usage');
+        if (!summaryRes.ok || !usageRes.ok) throw new Error('Failed to fetch reports');
+        setReport(await summaryRes.json());
+        setVehicleUsage(await usageRes.json());
+      } catch (e) {
+        setReportError('Failed to load reports');
+      }
+      setReportLoading(false);
+    }
+    fetchReports();
+  }, []);
 
   const fetchVehicles = async () => {
     const res = await fetch('http://localhost:5000/api/vehicles');
@@ -229,6 +253,42 @@ export default function AdminDashboard() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
+      {/* --- Reports Section --- */}
+      <Box sx={{ mb: 4, p: 2, background: '#f5f5f5', borderRadius: 2 }}>
+        <Typography variant="h5" gutterBottom>Reports</Typography>
+        {reportLoading ? (
+          <Typography>Loading reports...</Typography>
+        ) : reportError ? (
+          <Typography color="error">{reportError}</Typography>
+        ) : (
+          <>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Bookings</Typography><Typography variant="h6">{report.totalBookings}</Typography></Paper></Grid>
+              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Cancellations</Typography><Typography variant="h6">{report.totalCancellations}</Typography></Paper></Grid>
+              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Revenue</Typography><Typography variant="h6">Rs. {Number(report.totalRevenue).toLocaleString()}</Typography></Paper></Grid>
+            </Grid>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Vehicle Usage</Typography>
+            <Paper sx={{ p: 2, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#eee' }}>
+                    <th style={{ textAlign: 'left', padding: 8 }}>Vehicle</th>
+                    <th style={{ textAlign: 'left', padding: 8 }}>Bookings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vehicleUsage.map(v => (
+                    <tr key={v.id}>
+                      <td style={{ padding: 8 }}>{v.model}</td>
+                      <td style={{ padding: 8 }}>{v.booking_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Paper>
+          </>
+        )}
+      </Box>
       <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={() => handleOpen()}>
         Add Vehicle
       </Button>
