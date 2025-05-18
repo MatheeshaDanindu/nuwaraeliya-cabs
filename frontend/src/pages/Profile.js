@@ -143,6 +143,20 @@ export default function Profile() {
               primary={`${b.vehicle_model || b.vehicle || ''} - ${b.start_time?.slice(0, 16).replace('T', ' ')} to ${b.end_time?.slice(0, 16).replace('T', ' ')}`}
               secondary={`Status: ${b.status || 'N/A'} | Payment: ${b.payment_status || 'N/A'}`}
             />
+            {/* Show payment receipt if available */}
+            {b.payment_status === 'paid' && b.payment_receipt_url && (
+              <Box sx={{ ml: 2, minWidth: 180 }}>
+                <Typography variant="body2" color="success.main">Advance Paid</Typography>
+                <Button href={b.payment_receipt_url} target="_blank" rel="noopener" size="small" variant="outlined" sx={{ mt: 0.5 }}>
+                  View Receipt
+                </Button>
+                {b.paid_at && (
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    Paid At: {new Date(b.paid_at).toLocaleString()}
+                  </Typography>
+                )}
+              </Box>
+            )}
           </ListItem>
         ))}
       </List>

@@ -1,36 +1,48 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, Typography, Button } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
-import { loadStripe } from '@stripe/stripe-js';
 
 export default function Success() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get("bookingId");
-  const sessionId = searchParams.get("session_id"); // Stripe may redirect with this param
+  const sessionId = searchParams.get("session_id");
+  const [receiptUrl, setReceiptUrl] = useState(null);
+  const [amount, setAmount] = useState(null);
+  const [paidAt, setPaidAt] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const confirmPayment = async () => {
       if (!bookingId || !sessionId) return;
+      setLoading(true);
+      setError("");
       try {
-        // Fetch the Stripe session details from the backend (you may need to add a backend endpoint for this)
-        const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-          headers: {
-            Authorization: `Bearer ${process.env.REACT_APP_STRIPE_SECRET_KEY}` // You may need to proxy this via backend for security
-          }
-        });
+        // Fetch the Stripe session details from the backend (secure proxy)
+        const stripeRes = await fetch(`http://localhost:5000/api/stripe/session/${sessionId}`);
+        if (!stripeRes.ok) throw new Error("Failed to fetch payment session");
         const session = await stripeRes.json();
-        const payment_intent = session.payment_intent;
-        const receipt_url = session.payment_status === 'paid' && session.payment_intent ? session.charges?.data?.[0]?.receipt_url : null;
-        const amount = session.amount_total / 100;
+        // Stripe session: expand payment_intent and charges
+        let payment_intent = session.payment_intent?.id || session.payment_intent;
+        let receipt_url = session.payment_intent?.charges?.data?.[0]?.receipt_url || null;
+        let paid = session.payment_status === 'paid';
+        let paid_at = session.payment_intent?.charges?.data?.[0]?.created
+          ? new Date(session.payment_intent.charges.data[0].created * 1000)
+          : null;
+        let amount_paid = session.amount_total ? session.amount_total / 100 : null;
+        setReceiptUrl(receipt_url);
+        setAmount(amount_paid);
+        setPaidAt(paid_at);
         // Send payment details to backend
         await fetch(`http://localhost:5000/api/bookings/${bookingId}/confirm-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_intent, receipt_url, amount })
+          body: JSON.stringify({ payment_intent, receipt_url, amount: amount_paid })
         });
       } catch (err) {
+        setError("Payment processed, but failed to fetch receipt details.");
         // Fallback: just update status if details can't be fetched
         await fetch(`http://localhost:5000/api/payment/update-booking-status`, {
           method: "POST",
@@ -38,8 +50,9 @@ export default function Success() {
           body: JSON.stringify({ bookingId, status: "confirmed" })
         });
       }
+      setLoading(false);
     };
-    if (bookingId) {
+    if (bookingId && sessionId) {
       confirmPayment();
     }
   }, [bookingId, sessionId]);
@@ -52,6 +65,18 @@ export default function Success() {
       <Typography variant="body1" sx={{ mb: 4 }}>
         Your booking has been successfully completed. Thank you for choosing us!
       </Typography>
+      {loading && <Typography>Processing payment and fetching receipt...</Typography>}
+      {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
+      {receiptUrl && (
+        <Box sx={{ my: 3 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>Payment Receipt</Typography>
+          <Typography>Amount Paid: <b>Rs. {amount?.toLocaleString()}</b></Typography>
+          {paidAt && <Typography>Paid At: {paidAt.toLocaleString()}</Typography>}
+          <Button href={receiptUrl} target="_blank" rel="noopener" variant="outlined" sx={{ mt: 1 }}>
+            View Stripe Receipt
+          </Button>
+        </Box>
+      )}
       <Button
         variant="contained"
         color="primary"

@@ -457,7 +457,8 @@ app.get('/api/bookings/user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     const result = await pool.query(
-      `SELECT b.*, v.model as vehicle_model FROM bookings b JOIN vehicles v ON b.vehicle_id = v.id WHERE b.user_id = $1 ORDER BY b.start_time DESC`,
+      `SELECT b.*, v.model as vehicle_model, b.payment_receipt_url, b.paid_at, b.payment_status, b.advance_paid
+       FROM bookings b JOIN vehicles v ON b.vehicle_id = v.id WHERE b.user_id = $1 ORDER BY b.start_time DESC`,
       [userId]
     );
     res.json(result.rows);
@@ -526,8 +527,16 @@ app.put('/api/bookings/:id', async (req, res) => {
 // Confirm payment and send confirmation email
 app.post('/api/bookings/:id/confirm-payment', async (req, res) => {
   const { id } = req.params;
-  const { payment_intent, receipt_url, amount } = req.body; // Accept payment details from frontend/Stripe webhook
+  let { payment_intent, receipt_url, amount } = req.body; // Accept payment details from frontend/Stripe webhook
   try {
+    // If receipt_url is missing, fetch payment_intent from Stripe for latest receipt
+    if (payment_intent && !receipt_url) {
+      const pi = await stripe.paymentIntents.retrieve(payment_intent, { expand: ['charges'] });
+      if (pi && pi.charges && pi.charges.data && pi.charges.data[0]) {
+        receipt_url = pi.charges.data[0].receipt_url;
+        if (!amount && pi.amount_received) amount = pi.amount_received / 100;
+      }
+    }
     // Fetch the current advance_paid value
     const current = await pool.query('SELECT advance_paid FROM bookings WHERE id = $1', [id]);
     let advance = amount;
@@ -647,6 +656,9 @@ app.delete('/api/driver-availability/:id', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+const stripeRoutes = require('./routes/stripe');
+app.use('/api/stripe', stripeRoutes);
 
 // Start server
 app.listen(PORT, () => {
