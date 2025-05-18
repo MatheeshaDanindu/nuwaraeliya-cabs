@@ -18,6 +18,7 @@ export default function Booking() {
   });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Redirect to login if not logged in
@@ -87,6 +88,7 @@ export default function Booking() {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError('');
     setSuccess(false);
+    setInfo('');
   };
 
   const handleSubmit = async e => {
@@ -94,6 +96,7 @@ export default function Booking() {
     setLoading(true);
     setError('');
     setSuccess(false);
+    setInfo('');
     if (!form.packageId) {
       setError('Please select a package.');
       setLoading(false);
@@ -119,13 +122,9 @@ export default function Booking() {
         })
       });
       if (res.ok) {
-        const booking = await res.json();
-        if (booking.emailSent) {
-          setSuccess(true);
-          setForm({ vehicleId: '', startDate: '', endDate: '', driverId: '', packageId: '' });
-        } else {
-          setError('Booking saved, but confirmation email was not sent.');
-        }
+        setSuccess(true);
+        setInfo('Your booking request has been submitted. An admin will review and approve your booking. Once approved, you will be able to pay the advance from your profile.');
+        setForm({ vehicleId: '', startDate: '', endDate: '', driverId: '', packageId: '' });
       } else {
         const err = await res.json();
         setError(err.error || 'Booking failed.');
@@ -140,6 +139,7 @@ export default function Booking() {
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}>
       <Typography variant="h5" gutterBottom>Book a Vehicle</Typography>
       {success && <Alert severity="success">Booking successful!</Alert>}
+      {info && <Alert severity="info">{info}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
       <form onSubmit={handleSubmit}>
         <TextField

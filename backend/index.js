@@ -4,6 +4,9 @@ const pool = require('./db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 require('dotenv').config();
 
 // Initialize Express app FIRST
@@ -118,6 +121,49 @@ app.post('/api/vehicles/:vehicleId/packages', async (req, res) => {
       'INSERT INTO packages (vehicle_id, name, description, price, price_unit, included_km, km_unit) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [vehicleId, name, description || '', price, price_unit, included_km, km_unit]
     );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/pay', async (req, res) => {
+  const { amount, bookingId, status } = req.body;
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Advance Payment',
+          },
+          unit_amount: amount * 100, // Amount in cents
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `http://localhost:3000/success?bookingId=${bookingId}`,
+      cancel_url: `http://localhost:3000/cancel`,
+      metadata: { amount, bookingId, status }
+    });
+
+    res.json({ id: session.id });
+  } catch (err) {
+    console.error('Error creating Stripe session:', err);
+    return res.status(500).json({ error: 'Failed to create payment session' });
+  }
+});
+
+
+app.post("/api/payment/update-booking-status", async (req, res) => {
+  const { bookingId, status } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+      [status, bookingId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -461,7 +507,8 @@ app.get('/api/bookings', async (req, res) => {
 app.put('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  if (!['confirmed', 'cancelled', 'pending', 'completed'].includes(status)) {
+  // Allow 'approved' as a valid status
+  if (!['confirmed', 'cancelled', 'pending', 'completed', 'approved'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
   try {
@@ -471,6 +518,44 @@ app.put('/api/bookings/:id', async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Confirm payment and send confirmation email
+app.post('/api/bookings/:id/confirm-payment', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Update booking status to confirmed
+    const result = await pool.query(
+      'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+      ['confirmed', id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    const booking = result.rows[0];
+    // Fetch user, vehicle, and package info for email
+    const userRes = await pool.query('SELECT name, email FROM users WHERE id = $1', [booking.user_id]);
+    const user = userRes.rows[0];
+    const vehicleRes = await pool.query('SELECT model, number_plate FROM vehicles WHERE id = $1', [booking.vehicle_id]);
+    const vehicle = vehicleRes.rows[0];
+    const pkgInfoRes = await pool.query('SELECT name, price, price_unit FROM packages WHERE id = $1', [booking.package_id]);
+    const pkgInfo = pkgInfoRes.rows[0];
+    // Send confirmation email
+    if (user && user.email) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Your Cab Booking Confirmation',
+        text: `Dear ${user.name},\n\nYour booking is confirmed!\n\nVehicle: ${vehicle.model} (${vehicle.number_plate})\nPackage: ${pkgInfo.name} - Rs. ${pkgInfo.price}/${pkgInfo.price_unit}\nStart: ${booking.start_time}\nEnd: ${booking.end_time}\n\nThank you for booking with us!`,
+      };
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (err) {
+        return res.status(500).json({ error: 'Payment confirmed, but failed to send confirmation email: ' + err.message });
+      }
+    }
+    res.json({ ...booking, emailSent: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

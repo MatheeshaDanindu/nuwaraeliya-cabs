@@ -29,7 +29,7 @@ export default function AdminBookings() {
     await fetch(`http://localhost:5000/api/bookings/${selected.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: action === 'approve' ? 'confirmed' : 'cancelled' })
+      body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'cancelled' })
     });
     setDialogOpen(false);
   };

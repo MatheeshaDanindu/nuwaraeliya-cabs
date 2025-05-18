@@ -14,6 +14,7 @@ import AdminBookings from './pages/AdminBookings';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverAvailability from './pages/DriverAvailability';
 import VehicleDetails from './pages/VehicleDetails';
+import Success from './pages/success';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -41,6 +42,7 @@ function App() {
         <Route path="/admin-bookings" element={<AdminBookings />} />
         <Route path="/driver-dashboard" element={<DriverDashboard />} />
         <Route path="/driver-availability" element={<DriverAvailability />} />
+        <Route path ="/success" element={<Success />} />
       </Routes>
     </Router>
   );

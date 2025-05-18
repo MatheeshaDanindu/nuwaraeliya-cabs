@@ -1,6 +1,7 @@
 // src/pages/Profile.js
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, Paper, List, ListItem, ListItemText, Alert } from '@mui/material';
+import PayAdvance from '../components/PayAdvance';
 
 export default function Profile() {
   const [profile, setProfile] = useState({ name: '', email: '', phone: '' });
@@ -71,7 +72,7 @@ export default function Profile() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: 700, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>My Profile</Typography>
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -123,11 +124,20 @@ export default function Profile() {
         {bookings.length === 0 && <ListItem><ListItemText primary="No bookings found." /></ListItem>}
         {bookings.map(b => (
           <ListItem key={b.id} divider secondaryAction={
-            b.status !== 'cancelled' && b.status !== 'completed' && (
+            b.status === 'approved' ? (
+              <PayAdvance booking={b} onPaid={() => {
+                setSuccess('Advance payment successful! Booking confirmed.');
+                // Refresh bookings
+                const user = JSON.parse(localStorage.getItem('user'));
+                fetch(`http://localhost:5000/api/bookings/user/${user.id}`)
+                  .then(res => res.json())
+                  .then(data => setBookings(Array.isArray(data) ? data : []));
+              }} />
+            ) : b.status !== 'cancelled' && b.status !== 'completed' ? (
               <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
                 Cancel
               </Button>
-            )
+            ) : null
           }>
             <ListItemText
               primary={`${b.vehicle_model || b.vehicle || ''} - ${b.start_time?.slice(0, 16).replace('T', ' ')} to ${b.end_time?.slice(0, 16).replace('T', ' ')}`}
