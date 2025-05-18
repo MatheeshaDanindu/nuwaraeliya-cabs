@@ -573,11 +573,37 @@ app.put('/api/bookings/:id', async (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
   try {
+    // Get booking and user info
+    const bookingRes = await pool.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (bookingRes.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    const booking = bookingRes.rows[0];
+    // Update booking status
     const result = await pool.query(
       'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
       [status, id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    // If cancelled, update vehicle status and notify customer
+    if (status === 'cancelled') {
+      // Set vehicle status to 'available'
+      await pool.query('UPDATE vehicles SET status = $1 WHERE id = $2', ['available', booking.vehicle_id]);
+      // Notify customer by email
+      const userRes = await pool.query('SELECT name, email FROM users WHERE id = $1', [booking.user_id]);
+      const user = userRes.rows[0];
+      if (user && user.email) {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: user.email,
+          subject: 'Your Cab Booking Has Been Cancelled',
+          text: `Dear ${user.name},\n\nYour booking for vehicle ID ${booking.vehicle_id} from ${booking.start_time} to ${booking.end_time} has been cancelled.\n\nIf you have any questions, please contact us.\n\nThank you.`,
+        };
+        try {
+          await transporter.sendMail(mailOptions);
+        } catch (err) {
+          // Log but don't fail the request
+          console.error('Failed to send cancellation email:', err.message);
+        }
+      }
+    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
