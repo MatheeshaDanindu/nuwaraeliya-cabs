@@ -567,7 +567,7 @@ app.get('/api/bookings', async (req, res) => {
 // Update booking status (approve/cancel/complete)
 app.put('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, admin_cancelled } = req.body;
   // Allow 'approved' as a valid status
   if (!['confirmed', 'cancelled', 'pending', 'completed', 'approved'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
@@ -577,13 +577,28 @@ app.put('/api/bookings/:id', async (req, res) => {
     const bookingRes = await pool.query('SELECT * FROM bookings WHERE id = $1', [id]);
     if (bookingRes.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     const booking = bookingRes.rows[0];
-    // Update booking status
+    // If admin_cancelled is not true, just set status to cancelled (pending admin review)
+    if (status === 'cancelled' && admin_cancelled !== true) {
+      const result = await pool.query(
+        'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+        [status, id]
+      );
+      return res.json(result.rows[0]);
+    }
+    // If admin_cancelled is true, finalize cancellation: update vehicle and notify customer
+    let updateFields = ['status = $1'];
+    let values = [status];
+    let idx = 2;
+    if (typeof admin_cancelled !== 'undefined') {
+      updateFields.push(`admin_cancelled = $${idx}`);
+      values.push(admin_cancelled);
+      idx++;
+    }
     const result = await pool.query(
-      'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
-      [status, id]
+      `UPDATE bookings SET ${updateFields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      [...values, id]
     );
-    // If cancelled, update vehicle status and notify customer
-    if (status === 'cancelled') {
+    if (status === 'cancelled' && admin_cancelled === true) {
       // Set vehicle status to 'available'
       await pool.query('UPDATE vehicles SET status = $1 WHERE id = $2', ['available', booking.vehicle_id]);
       // Notify customer by email

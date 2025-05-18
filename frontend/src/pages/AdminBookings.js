@@ -11,6 +11,8 @@ export default function AdminBookings() {
   const [meterResult, setMeterResult] = useState(null);
   const [meterError, setMeterError] = useState('');
   const [refreshFlag, setRefreshFlag] = useState(0);
+  const [cancelLoading, setCancelLoading] = useState({});
+  const [cancelError, setCancelError] = useState({});
 
   useEffect(() => {
     fetch('http://localhost:5000/api/bookings')
@@ -148,6 +150,37 @@ export default function AdminBookings() {
                     <>
                       <Button color="success" variant="contained" size="small" sx={{ mr: 1 }} onClick={() => handleAction(b, 'approve')}>Approve</Button>
                       <Button color="error" variant="contained" size="small" onClick={() => handleAction(b, 'cancel')}>Cancel</Button>
+                    </>
+                  )}
+                  {b.status === 'cancelled' && b.admin_cancelled !== true && (
+                    <>
+                      <Button color="warning" variant="contained" size="small"
+                        disabled={!!cancelLoading[b.id]}
+                        onClick={async () => {
+                          if (!window.confirm('Are you sure you want to confirm this cancellation?')) return;
+                          setCancelLoading(l => ({ ...l, [b.id]: true }));
+                          setCancelError(e => ({ ...e, [b.id]: undefined }));
+                          try {
+                            const res = await fetch(`http://localhost:5000/api/bookings/${b.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: 'cancelled', admin_cancelled: true })
+                            });
+                            if (!res.ok) {
+                              const err = await res.json().catch(() => ({}));
+                              setCancelError(e => ({ ...e, [b.id]: err.error || 'Failed to confirm cancellation.' }));
+                            } else {
+                              setRefreshFlag(f => f + 1);
+                            }
+                          } catch (err) {
+                            setCancelError(e => ({ ...e, [b.id]: err.message || 'Network error' }));
+                          } finally {
+                            setCancelLoading(l => ({ ...l, [b.id]: false }));
+                          }
+                        }}>
+                        {cancelLoading[b.id] ? 'Confirming...' : 'Confirm Cancellation'}
+                      </Button>
+                      {cancelError[b.id] && <div style={{ color: 'red', fontSize: 12 }}>{cancelError[b.id]}</div>}
                     </>
                   )}
                   {b.status === 'confirmed' && (
