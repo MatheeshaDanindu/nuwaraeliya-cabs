@@ -125,10 +125,25 @@ export default function AdminBookings() {
                 <TableCell>{b.start_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.end_time?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{b.status}</TableCell>
-                <TableCell>{b.payment_status === 'paid' && b.advance_paid ? `Rs. ${Number(b.advance_paid).toLocaleString()}` : '-'}</TableCell>
+                <TableCell>{b.payment_status === 'paid' && b.advance_paid ? `Rs. ${Number(b.advance_paid).toLocaleString()}` : b.payment_status === 'unpaid' ? 'Unpaid' : '-'}</TableCell>
                 <TableCell>{b.total_fee ? `Rs. ${Number(b.total_fee).toLocaleString()}` : '-'}</TableCell>
                 <TableCell>{b.total_fee && b.advance_paid ? `Rs. ${(Number(b.total_fee) - Number(b.advance_paid)).toLocaleString()}` : '-'}</TableCell>
                 <TableCell>
+                  {b.payment_status !== 'paid' && (
+                    <Button color="success" variant="outlined" size="small" sx={{ mb: 1 }} onClick={async () => {
+                      await fetch(`http://localhost:5000/api/bookings/${b.id}/confirm-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payment_intent: b.payment_intent_id, amount: b.advance_paid })
+                      });
+                      setRefreshFlag(f => f + 1);
+                    }}>Mark as Paid</Button>
+                  )}
+                  {b.payment_status === 'paid' && b.payment_receipt_url && (
+                    <Button href={b.payment_receipt_url} target="_blank" rel="noopener" size="small" variant="outlined" sx={{ mb: 1 }}>
+                      View Receipt
+                    </Button>
+                  )}
                   {b.status === 'pending' && (
                     <>
                       <Button color="success" variant="contained" size="small" sx={{ mr: 1 }} onClick={() => handleAction(b, 'approve')}>Approve</Button>

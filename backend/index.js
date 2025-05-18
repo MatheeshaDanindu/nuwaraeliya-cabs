@@ -412,6 +412,66 @@ app.put('/api/bookings/:id/end', async (req, res) => {
   res.json({ ...result.rows[0], total_km, total_hours, extra_km, extra_hours, extra_km_fee, extra_hour_fee });
 });
 
+// Admin: Mark payment as unpaid
+app.post('/api/bookings/:id/mark-unpaid', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      'UPDATE bookings SET payment_status = $1 WHERE id = $2 RETURNING *',
+      ['unpaid', id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Admin: Manual payment status update (with related columns)
+app.post('/api/bookings/:id/manual-payment-status', async (req, res) => {
+  const { id } = req.params;
+  const { payment_status, payment_receipt_url, paid_at } = req.body;
+  try {
+    let updateFields = [];
+    let values = [];
+    let idx = 1;
+    // Always update status to 'approved'
+    updateFields.push(`status = $${idx}`);
+    values.push('approved');
+    idx++;
+    // If payment_status is 'paid', set payment_status and paid_at
+    if (payment_status === 'paid') {
+      updateFields.push(`payment_status = $${idx}`);
+      values.push('paid');
+      idx++;
+      if (typeof paid_at !== 'undefined') {
+        updateFields.push(`paid_at = $${idx}`);
+        values.push(paid_at);
+        idx++;
+      }
+      if (typeof payment_receipt_url !== 'undefined') {
+        updateFields.push(`payment_receipt_url = $${idx}`);
+        values.push(payment_receipt_url);
+        idx++;
+      }
+    } else {
+      // If unpaid, set payment_status and paid_at to null
+      updateFields.push(`payment_status = NULL`);
+      updateFields.push(`paid_at = NULL`);
+      updateFields.push(`payment_receipt_url = NULL`);
+    }
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE bookings SET ${updateFields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Get user profile
 app.get('/api/users/:id', async (req, res) => {
   const { id } = req.params;
