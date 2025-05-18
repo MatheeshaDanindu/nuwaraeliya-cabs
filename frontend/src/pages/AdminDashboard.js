@@ -36,6 +36,9 @@ export default function AdminDashboard() {
   const [reportLoading, setReportLoading] = useState(true);
   const [reportError, setReportError] = useState('');
 
+  // --- Analytics Period State ---
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('all'); // 'all', 'month', 'quarter', 'year'
+
   useEffect(() => {
     fetchVehicles();
   }, [open]); // Refetch vehicles whenever dialog closes (after add/edit)
@@ -45,8 +48,9 @@ export default function AdminDashboard() {
       setReportLoading(true);
       setReportError('');
       try {
-        const summaryRes = await fetch('http://localhost:5000/api/reports/summary');
-        const usageRes = await fetch('http://localhost:5000/api/reports/vehicle-usage');
+        const periodParam = analyticsPeriod !== 'all' ? `?period=${analyticsPeriod}` : '';
+        const summaryRes = await fetch(`http://localhost:5000/api/reports/summary${periodParam}`);
+        const usageRes = await fetch(`http://localhost:5000/api/reports/vehicle-usage${periodParam}`);
         if (!summaryRes.ok || !usageRes.ok) throw new Error('Failed to fetch reports');
         setReport(await summaryRes.json());
         setVehicleUsage(await usageRes.json());
@@ -56,7 +60,7 @@ export default function AdminDashboard() {
       setReportLoading(false);
     }
     fetchReports();
-  }, []);
+  }, [analyticsPeriod]);
 
   const fetchVehicles = async () => {
     const res = await fetch('http://localhost:5000/api/vehicles');
@@ -256,6 +260,21 @@ export default function AdminDashboard() {
       {/* --- Reports Section --- */}
       <Box sx={{ mb: 4, p: 2, background: '#f5f5f5', borderRadius: 2 }}>
         <Typography variant="h5" gutterBottom>Reports</Typography>
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            select
+            label="Analytics Period"
+            value={analyticsPeriod}
+            onChange={e => setAnalyticsPeriod(e.target.value)}
+            size="small"
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="all">All Time</MenuItem>
+            <MenuItem value="month">This Month</MenuItem>
+            <MenuItem value="quarter">This Quarter</MenuItem>
+            <MenuItem value="year">This Year</MenuItem>
+          </TextField>
+        </Box>
         {reportLoading ? (
           <Typography>Loading reports...</Typography>
         ) : reportError ? (

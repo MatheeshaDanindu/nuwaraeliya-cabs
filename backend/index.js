@@ -758,12 +758,21 @@ app.delete('/api/driver-availability/:id', async (req, res) => {
   }
 });
 
-// Admin reports: summary stats
+// Admin reports: summary stats (with optional period)
 app.get('/api/reports/summary', async (req, res) => {
+  const { period } = req.query; // 'month', 'quarter', 'year', or undefined
+  let dateFilter = '';
+  if (period === 'month') {
+    dateFilter = `AND date_trunc('month', start_time) = date_trunc('month', CURRENT_DATE)`;
+  } else if (period === 'quarter') {
+    dateFilter = `AND date_trunc('quarter', start_time) = date_trunc('quarter', CURRENT_DATE)`;
+  } else if (period === 'year') {
+    dateFilter = `AND date_trunc('year', start_time) = date_trunc('year', CURRENT_DATE)`;
+  }
   try {
-    const totalBookings = await pool.query('SELECT COUNT(*) FROM bookings');
-    const totalCancellations = await pool.query("SELECT COUNT(*) FROM bookings WHERE status = 'cancelled'");
-    const totalRevenue = await pool.query("SELECT COALESCE(SUM(advance_paid),0) FROM bookings WHERE payment_status = 'paid'");
+    const totalBookings = await pool.query(`SELECT COUNT(*) FROM bookings WHERE 1=1 ${dateFilter}`);
+    const totalCancellations = await pool.query(`SELECT COUNT(*) FROM bookings WHERE status = 'cancelled' ${dateFilter}`);
+    const totalRevenue = await pool.query(`SELECT COALESCE(SUM(advance_paid),0) FROM bookings WHERE payment_status = 'paid' ${dateFilter}`);
     res.json({
       totalBookings: Number(totalBookings.rows[0].count),
       totalCancellations: Number(totalCancellations.rows[0].count),
@@ -774,13 +783,22 @@ app.get('/api/reports/summary', async (req, res) => {
   }
 });
 
-// Admin reports: vehicle usage
+// Admin reports: vehicle usage (with optional period)
 app.get('/api/reports/vehicle-usage', async (req, res) => {
+  const { period } = req.query;
+  let dateFilter = '';
+  if (period === 'month') {
+    dateFilter = `AND date_trunc('month', b.start_time) = date_trunc('month', CURRENT_DATE)`;
+  } else if (period === 'quarter') {
+    dateFilter = `AND date_trunc('quarter', b.start_time) = date_trunc('quarter', CURRENT_DATE)`;
+  } else if (period === 'year') {
+    dateFilter = `AND date_trunc('year', b.start_time) = date_trunc('year', CURRENT_DATE)`;
+  }
   try {
     const result = await pool.query(`
       SELECT v.id, v.model, COUNT(b.id) as booking_count
       FROM vehicles v
-      LEFT JOIN bookings b ON v.id = b.vehicle_id AND b.status != 'cancelled'
+      LEFT JOIN bookings b ON v.id = b.vehicle_id AND b.status != 'cancelled' ${dateFilter}
       GROUP BY v.id, v.model
       ORDER BY booking_count DESC, v.model
     `);
