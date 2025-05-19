@@ -15,6 +15,7 @@ import DriverDashboard from './pages/DriverDashboard';
 import DriverAvailability from './pages/DriverAvailability';
 import VehicleDetails from './pages/VehicleDetails';
 import Success from './pages/success';
+import Footer from './components/Footer';
 
 function App() {
   const [vehicles, setVehicles] = useState([]);
@@ -44,6 +45,7 @@ function App() {
         <Route path="/driver-availability" element={<DriverAvailability />} />
         <Route path ="/success" element={<Success />} />
       </Routes>
+      <Footer />
     </Router>
   );
 }
