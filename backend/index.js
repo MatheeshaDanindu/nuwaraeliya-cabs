@@ -992,6 +992,17 @@ app.get('/api/reviews/driver/:driverId', async (req, res) => {
   }
 });
 
+// Get all reviews submitted by a user
+app.get('/api/reviews/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM reviews WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // (Optional) Get review for a booking
 app.get('/api/reviews/booking/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
@@ -999,6 +1010,43 @@ app.get('/api/reviews/booking/:bookingId', async (req, res) => {
     const result = await pool.query('SELECT * FROM reviews WHERE booking_id = $1', [bookingId]);
     if (!result.rows.length) return res.status(404).json({ error: 'No review' });
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- User Analytics Endpoint ---
+app.get('/api/analytics/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    // Total completed rides
+    const totalRidesRes = await pool.query(
+      `SELECT COUNT(*) FROM bookings WHERE user_id = $1 AND status = 'completed'`,
+      [userId]
+    );
+    const totalRides = Number(totalRidesRes.rows[0].count);
+
+    // Total spent (advance_paid + total_fee for completed and paid bookings)
+    const totalSpentRes = await pool.query(
+      `SELECT COALESCE(SUM(advance_paid),0) + COALESCE(SUM(total_fee),0) as total
+       FROM bookings WHERE user_id = $1 AND status = 'completed' AND payment_status = 'paid'`,
+      [userId]
+    );
+    const totalSpent = Number(totalSpentRes.rows[0].total || 0);
+
+    // Most used vehicle
+    const mostUsedVehicleRes = await pool.query(
+      `SELECT v.model, COUNT(*) as count
+       FROM bookings b JOIN vehicles v ON b.vehicle_id = v.id
+       WHERE b.user_id = $1 AND b.status = 'completed'
+       GROUP BY v.model
+       ORDER BY count DESC, v.model
+       LIMIT 1`,
+      [userId]
+    );
+    const mostUsedVehicle = mostUsedVehicleRes.rows[0]?.model || null;
+
+    res.json({ totalRides, totalSpent, mostUsedVehicle });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
