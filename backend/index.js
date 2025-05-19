@@ -4,6 +4,9 @@ const pool = require('./db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -33,6 +36,22 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false
   }
 });
+
+// Storage for user uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
+  }
+});
+const upload = multer({ storage });
+
+// Ensure uploads dir exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -223,18 +242,82 @@ app.get('/api/packages/:id/advance', async (req, res) => {
   res.json({ advance });
 });
 
-// Registration endpoint
-app.post('/api/register', async (req, res) => {
-  const { name, email, password, role } = req.body;
+// Registration with file upload, pending approval
+app.post('/api/register', upload.fields([
+  { name: 'id_card', maxCount: 1 },
+  { name: 'address_proof', maxCount: 1 }
+]), async (req, res) => {
+  const { name, email, password } = req.body;
+  const idCardFile = req.files['id_card']?.[0];
+  const addressProofFile = req.files['address_proof']?.[0];
+  if (!name || !email || !password || !idCardFile || !addressProofFile) {
+    return res.status(400).json({ error: 'All fields and uploads are required.' });
+  }
   try {
+    // Check if user exists
+    const exists = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+    if (exists.rows.length > 0) return res.status(400).json({ error: 'Email already registered.' });
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Insert user as pending approval
     const result = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, email, hashedPassword, role]
+      'INSERT INTO users (name, email, password, id_card_path, address_proof_path, approved, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [name, email, hashedPassword, idCardFile.filename, addressProofFile.filename, false, 'customer']
     );
-    res.json({ user: result.rows[0] });
+    res.json({ success: true, pending: true });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: get pending users
+app.get('/api/users/pending', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name, email, id_card_path, address_proof_path FROM users WHERE approved = false AND role = $1', ['customer']);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: approve user
+app.post('/api/users/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('UPDATE users SET approved = true WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: reject user (optional: delete files)
+app.post('/api/users/:id/reject', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Optionally, delete uploaded files
+    const user = await pool.query('SELECT id_card_path, address_proof_path FROM users WHERE id = $1', [id]);
+    if (user.rows.length) {
+      const { id_card_path, address_proof_path } = user.rows[0];
+      if (id_card_path) fs.unlink(path.join(uploadsDir, id_card_path), () => {});
+      if (address_proof_path) fs.unlink(path.join(uploadsDir, address_proof_path), () => {});
+    }
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Serve uploaded files securely
+app.get('/uploads/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(uploadsDir, filename);
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('File not found');
   }
 });
 
@@ -246,6 +329,9 @@ app.post('/api/login', async (req, res) => {
     if (result.rows.length === 0) return res.status(400).json({ error: 'User not found' });
 
     const user = result.rows[0];
+    if (user.role === 'customer' && user.approved === false) {
+      return res.status(403).json({ error: 'Your registration is pending admin approval.' });
+    }
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: 'Invalid password' });
 

@@ -2,34 +2,96 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 export default function RegisterForm() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [idFile, setIdFile] = useState(null);
+  const [addressFile, setAddressFile] = useState(null);
+  const [idPreview, setIdPreview] = useState(null);
+  const [addressPreview, setAddressPreview] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handlePasswordChange = e => {
+    const value = e.target.value;
+    setForm(f => ({ ...f, password: value }));
+    // Password strength logic
+    if (value.length < 6) setPasswordStrength('Weak');
+    else if (value.match(/[A-Z]/) && value.match(/[0-9]/) && value.length >= 8) setPasswordStrength('Strong');
+    else setPasswordStrength('Medium');
+  };
+
+  const handleIdFile = e => {
+    const file = e.target.files[0];
+    setIdFile(file);
+    setIdPreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleAddressFile = e => {
+    const file = e.target.files[0];
+    setAddressFile(file);
+    setAddressPreview(file ? URL.createObjectURL(file) : null);
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    // Input validation
+    if (!form.name.trim()) {
+      setError('Name is required.');
+      return;
+    }
+    if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (form.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
+    if (!idFile) {
+      setError('Please upload a copy of your ID card.');
+      return;
+    }
+    if (!addressFile) {
+      setError('Please upload a document that proves your address.');
+      return;
+    }
+    if (!agreed) {
+      setError('You must agree to the Terms and Privacy Policy.');
+      return;
+    }
     setLoading(true);
     try {
+      const formData = new FormData();
+      formData.append('name', form.name);
+      formData.append('email', form.email);
+      formData.append('password', form.password);
+      formData.append('id_card', idFile);
+      formData.append('address_proof', addressFile);
       const res = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password })
+        body: formData
       });
       if (res.ok) {
-        setSuccess('Registration successful! Redirecting to login...');
-        setTimeout(() => navigate('/login'), 1500);
+        setSuccess('Registration submitted! Awaiting admin approval.');
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         const err = await res.json();
         setError(err.error || 'Registration failed');
@@ -42,10 +104,14 @@ export default function RegisterForm() {
 
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}>
-      <Typography variant="h5">Register</Typography>
+      <Box sx={{ textAlign: 'center', mb: 2 }}>
+        <img src="/logo.png" alt="Nuwara Eliya Cabs Logo" style={{ width: 64, marginBottom: 8 }} />
+        <Typography variant="h5">Create Your Account</Typography>
+        <Typography variant="body2" color="text.secondary">Join Nuwara Eliya Cabs for the best ride experience</Typography>
+      </Box>
       {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ my: 2 }}>{success}</Alert>}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autoComplete="on" encType="multipart/form-data">
         <TextField
           label="Name"
           name="name"
@@ -53,7 +119,9 @@ export default function RegisterForm() {
           fullWidth
           margin="normal"
           onChange={handleChange}
+          value={form.name}
           required
+          autoFocus
         />
         <TextField
           label="Email"
@@ -62,26 +130,70 @@ export default function RegisterForm() {
           fullWidth
           margin="normal"
           onChange={handleChange}
+          value={form.email}
           required
         />
         <TextField
           label="Password"
           name="password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           fullWidth
           margin="normal"
-          onChange={handleChange}
+          onChange={handlePasswordChange}
+          value={form.password}
           required
+          InputProps={{
+            endAdornment: (
+              <Button onClick={() => setShowPassword(v => !v)} tabIndex={-1} sx={{ minWidth: 0, color: 'inherit' }} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+              </Button>
+            )
+          }}
         />
+        {form.password && (
+          <Typography variant="caption" sx={{ color: passwordStrength === 'Strong' ? 'green' : passwordStrength === 'Medium' ? 'orange' : 'red', ml: 1 }}>
+            Password strength: {passwordStrength}
+          </Typography>
+        )}
         <TextField
           label="Confirm Password"
           name="confirmPassword"
-          type="password"
+          type={showConfirm ? 'text' : 'password'}
           fullWidth
           margin="normal"
           onChange={handleChange}
+          value={form.confirmPassword}
           required
+          InputProps={{
+            endAdornment: (
+              <Button onClick={() => setShowConfirm(v => !v)} tabIndex={-1} sx={{ minWidth: 0, color: 'inherit' }} aria-label={showConfirm ? 'Hide password' : 'Show password'}>
+                {showConfirm ? <VisibilityOff /> : <Visibility />}
+              </Button>
+            )
+          }}
         />
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2">Upload ID Card (NIC/Passport)</Typography>
+          <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} sx={{ mt: 1 }}>
+            {idFile ? 'Change File' : 'Upload File'}
+            <input type="file" accept="image/*,application/pdf" hidden onChange={handleIdFile} />
+          </Button>
+          {idPreview && <Box sx={{ mt: 1 }}><img src={idPreview} alt="ID Preview" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 4 }} /></Box>}
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2">Upload Address Proof (Utility Bill, Bank Statement, etc.)</Typography>
+          <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} sx={{ mt: 1 }}>
+            {addressFile ? 'Change File' : 'Upload File'}
+            <input type="file" accept="image/*,application/pdf" hidden onChange={handleAddressFile} />
+          </Button>
+          {addressPreview && <Box sx={{ mt: 1 }}><img src={addressPreview} alt="Address Preview" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 4 }} /></Box>}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+          <input type="checkbox" id="agree" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ marginRight: 8 }} />
+          <label htmlFor="agree" style={{ fontSize: 14 }}>
+            I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+          </label>
+        </Box>
         <Button
           type="submit"
           variant="contained"
@@ -89,6 +201,7 @@ export default function RegisterForm() {
           fullWidth
           sx={{ mt: 2 }}
           disabled={loading}
+          aria-busy={loading}
         >
           {loading ? 'Registering...' : 'Register'}
         </Button>

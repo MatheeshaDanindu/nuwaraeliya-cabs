@@ -39,6 +39,13 @@ export default function AdminDashboard() {
   // --- Analytics Period State ---
   const [analyticsPeriod, setAnalyticsPeriod] = useState('all'); // 'all', 'month', 'quarter', 'year'
 
+  // --- Pending Customers State ---
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
+  const [pendingError, setPendingError] = useState('');
+  const [actionLoading, setActionLoading] = useState({});
+  const [actionError, setActionError] = useState({});
+
   useEffect(() => {
     fetchVehicles();
   }, [open]); // Refetch vehicles whenever dialog closes (after add/edit)
@@ -61,6 +68,22 @@ export default function AdminDashboard() {
     }
     fetchReports();
   }, [analyticsPeriod]);
+
+  useEffect(() => {
+    async function fetchPending() {
+      setPendingLoading(true);
+      setPendingError('');
+      try {
+        const res = await fetch('http://localhost:5000/api/users/pending');
+        if (!res.ok) throw new Error('Failed to fetch pending users');
+        setPendingUsers(await res.json());
+      } catch (e) {
+        setPendingError('Failed to load pending customers');
+      }
+      setPendingLoading(false);
+    }
+    fetchPending();
+  }, []);
 
   const fetchVehicles = async () => {
     const res = await fetch('http://localhost:5000/api/vehicles');
@@ -181,6 +204,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleApprove = async (userId) => {
+    setActionLoading(a => ({ ...a, [userId]: 'approve' }));
+    setActionError(a => ({ ...a, [userId]: '' }));
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${userId}/approve`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to approve user');
+      setPendingUsers(users => users.filter(u => u.id !== userId));
+    } catch (e) {
+      setActionError(a => ({ ...a, [userId]: 'Failed to approve user' }));
+    }
+    setActionLoading(a => ({ ...a, [userId]: null }));
+  };
+
+  const handleReject = async (userId) => {
+    if (!window.confirm('Are you sure you want to reject and delete this customer?')) return;
+    setActionLoading(a => ({ ...a, [userId]: 'reject' }));
+    setActionError(a => ({ ...a, [userId]: '' }));
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${userId}/reject`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to reject user');
+      setPendingUsers(users => users.filter(u => u.id !== userId));
+    } catch (e) {
+      setActionError(a => ({ ...a, [userId]: 'Failed to reject user' }));
+    }
+    setActionLoading(a => ({ ...a, [userId]: null }));
+  };
+
   // Fetch packages for selected vehicle
   useEffect(() => {
     if (!selectedVehicleId) { setPackages([]); return; }
@@ -257,6 +307,77 @@ export default function AdminDashboard() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
+      {/* --- Pending Customers Section --- */}
+      <Box sx={{ mb: 4, p: 2, background: '#fffbe6', borderRadius: 2, border: '1px solid #ffe082' }}>
+        <Typography variant="h5" gutterBottom>Pending Customer Approvals</Typography>
+        {pendingLoading ? (
+          <Typography>Loading pending customers...</Typography>
+        ) : pendingError ? (
+          <Typography color="error">{pendingError}</Typography>
+        ) : pendingUsers.length === 0 ? (
+          <Typography>No pending customers.</Typography>
+        ) : (
+          <Grid container spacing={2}>
+            {pendingUsers.map(user => (
+              <Grid item xs={12} md={6} lg={4} key={user.id}>
+                <Paper sx={{ p: 2, mb: 2 }} elevation={3}>
+                  <Typography variant="subtitle1"><b>{user.name}</b></Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>{user.email}</Typography>
+                  <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                    <Box>
+                      <Typography variant="caption">ID Card:</Typography><br />
+                      <img src={`http://localhost:5000/uploads/${user.id_card_path}`} alt="ID Card" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 4, border: '1px solid #ccc' }} />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ mt: 1 }}
+                        href={`http://localhost:5000/uploads/${user.id_card_path}`}
+                        download={user.id_card_path}
+                      >
+                        Download
+                      </Button>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption">Address Proof:</Typography><br />
+                      <img src={`http://localhost:5000/uploads/${user.address_proof_path}`} alt="Address Proof" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 4, border: '1px solid #ccc' }} />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ mt: 1 }}
+                        href={`http://localhost:5000/uploads/${user.address_proof_path}`}
+                        download={user.address_proof_path}
+                      >
+                        Download
+                      </Button>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      disabled={actionLoading[user.id] === 'approve'}
+                      onClick={() => handleApprove(user.id)}
+                    >
+                      {actionLoading[user.id] === 'approve' ? 'Approving...' : 'Approve'}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      disabled={actionLoading[user.id] === 'reject'}
+                      onClick={() => handleReject(user.id)}
+                    >
+                      {actionLoading[user.id] === 'reject' ? 'Rejecting...' : 'Reject'}
+                    </Button>
+                  </Box>
+                  {actionError[user.id] && <Typography color="error" sx={{ mt: 1 }}>{actionError[user.id]}</Typography>}
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Box>
       {/* --- Reports Section --- */}
       <Box sx={{ mb: 4, p: 2, background: '#f5f5f5', borderRadius: 2 }}>
         <Typography variant="h5" gutterBottom>Reports</Typography>
