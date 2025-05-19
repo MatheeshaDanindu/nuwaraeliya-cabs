@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Card, CardContent, Grid, Button, CircularProgress, Avatar, Chip, LinearProgress, List, ListItem, ListItemText, Divider, Alert, Box as MuiBox, Paper, TextField, Rating } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AdminDashboard from '../pages/AdminDashboard';
+import ReviewDialog from './ReviewDialog';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [reviews, setReviews] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [analytics, setAnalytics] = useState({ totalRides: 0, totalSpent: 0, mostUsedVehicle: null });
+  const [promotions, setPromotions] = useState([]);
   const navigate = useNavigate();
 
   // Quick Booking Widget state
@@ -53,11 +55,72 @@ export default function Dashboard() {
     }
   };
 
+  // Add/remove favorites logic
+  const saveFavorites = favs => {
+    setFavorites(favs);
+    localStorage.setItem('favorites', JSON.stringify(favs));
+  };
+  const handleAddFavorite = fav => {
+    if (!favorites.some(f => f.id === fav.id && f.type === fav.type)) {
+      saveFavorites([...favorites, fav]);
+    }
+  };
+  const handleRemoveFavorite = fav => {
+    saveFavorites(favorites.filter(f => !(f.id === fav.id && f.type === fav.type)));
+  };
+
+  const [editReview, setEditReview] = useState(null); // {review, open}
+  const [reviewActionMsg, setReviewActionMsg] = useState('');
+  const [reviewActionError, setReviewActionError] = useState('');
+
+  const handleEditReview = review => {
+    setEditReview({ review, open: true });
+    setReviewActionMsg('');
+    setReviewActionError('');
+  };
+  const handleCloseEditReview = () => setEditReview(null);
+  const handleSubmitEditReview = async (updatedReview) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/reviews/${updatedReview.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedReview)
+      });
+      if (res.ok) {
+        setReviews(reviews.map(r => r.id === updatedReview.id ? { ...r, ...updatedReview } : r));
+        setReviewActionMsg('Review updated!');
+        setEditReview(null);
+      } else {
+        setReviewActionError('Failed to update review.');
+      }
+    } catch {
+      setReviewActionError('Network error.');
+    }
+  };
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Delete this review?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/reviews/${reviewId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setReviews(reviews.filter(r => r.id !== reviewId));
+        setReviewActionMsg('Review deleted.');
+      } else {
+        setReviewActionError('Failed to delete review.');
+      }
+    } catch {
+      setReviewActionError('Network error.');
+    }
+  };
+
   useEffect(() => {
     // Fetch user info from localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const userObj = JSON.parse(userData);
+      // Fetch latest user info from backend for up-to-date profile picture
+      fetch(`http://localhost:5000/api/users/${userObj.id}`)
+        .then(res => res.json())
+        .then(data => setUser(data));
     }
     // Fetch dashboard stats from backend (mocked for now)
     async function fetchStats() {
@@ -106,6 +169,12 @@ export default function Dashboard() {
     // Load favorites from localStorage (for demo; in production, fetch from backend)
     const favs = localStorage.getItem('favorites');
     if (favs) setFavorites(JSON.parse(favs));
+
+    // Fetch promotions (future: from backend)
+    fetch('http://localhost:5000/api/promotions')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setPromotions(Array.isArray(data) ? data : []))
+      .catch(() => setPromotions([]));
   }, []);
 
   // Split bookings
@@ -160,7 +229,7 @@ export default function Dashboard() {
           {/* Personalized Greeting and Profile */}
           <Paper sx={{ p: 3, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar src={user?.profile_picture_path ? `http://localhost:5000/uploads/${user.profile_picture_path}` : undefined} sx={{ width: 64, height: 64 }}>
-              {user?.name?.[0]}
+              {user?.profile_picture_path ? '' : user?.name?.[0]}
             </Avatar>
             <Box>
               <Typography variant="h5">Welcome, {user?.name}!</Typography>
@@ -244,15 +313,31 @@ export default function Dashboard() {
           {/* Recent Reviews & Ratings */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Your Recent Reviews</Typography>
+            {reviewActionMsg && <Alert severity="success" sx={{ mb: 1 }}>{reviewActionMsg}</Alert>}
+            {reviewActionError && <Alert severity="error" sx={{ mb: 1 }}>{reviewActionError}</Alert>}
             <List>
               {reviews.length === 0 && <ListItem><ListItemText primary="You have not submitted any reviews yet." /></ListItem>}
               {reviews.slice(0, 3).map((review, idx) => (
-                <ListItem key={idx} alignItems="flex-start">
+                <ListItem key={idx} alignItems="flex-start" secondaryAction={
+                  <>
+                    <Button size="small" onClick={() => handleEditReview(review)}>Edit</Button>
+                    <Button size="small" color="error" onClick={() => handleDeleteReview(review.id)}>Delete</Button>
+                  </>
+                }>
                   <Rating value={review.rating} readOnly max={5} />
                   <ListItemText primary={review.comment || 'No comment'} secondary={review.created_at ? new Date(review.created_at).toLocaleDateString() : ''} sx={{ ml: 2 }} />
                 </ListItem>
               ))}
             </List>
+            {editReview?.open && (
+              <ReviewDialog
+                open={editReview.open}
+                review={editReview.review}
+                onClose={handleCloseEditReview}
+                onSubmit={handleSubmitEditReview}
+                isEdit
+              />
+            )}
           </Paper>
           {/* Saved Vehicles / Favorite Drivers */}
           <Paper sx={{ p: 2, mb: 3 }}>
@@ -260,9 +345,12 @@ export default function Dashboard() {
             <List>
               {favorites.length === 0 && <ListItem><ListItemText primary="No favorites yet. Add drivers or vehicles to favorites for quick access." /></ListItem>}
               {favorites.map((fav, idx) => (
-                <ListItem key={idx}>
+                <ListItem key={idx} secondaryAction={
+                  <Button size="small" color="error" onClick={() => handleRemoveFavorite(fav)}>Remove</Button>
+                }>
                   <ListItemText primary={fav.type === 'driver' ? `Driver: ${fav.name}` : `Vehicle: ${fav.model}`} />
-                  <Button size="small">Book Again</Button>
+                  <Button size="small" onClick={() => navigate(fav.type === 'driver' ? `/driver/${fav.id}` : `/vehicles/${fav.id}`)}>View</Button>
+                  <Button size="small" onClick={() => navigate(`/booking?${fav.type}=${fav.id}`)}>Book Again</Button>
                 </ListItem>
               ))}
             </List>
@@ -277,18 +365,54 @@ export default function Dashboard() {
           {/* Support & Help */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Support & Help</Typography>
-            <Button variant="outlined" sx={{ mr: 1 }}>FAQ</Button>
-            <Button variant="outlined">Contact Support</Button>
+            <Typography variant="subtitle1" sx={{ mt: 1 }}>Frequently Asked Questions</Typography>
+            <List dense>
+              <ListItem><ListItemText primary="How do I book a cab?" secondary="Use the Quick Booking widget or the Book a Cab button. Choose your vehicle, dates, and submit." /></ListItem>
+              <ListItem><ListItemText primary="How do I pay?" secondary="Once your booking is approved, you can pay the advance online via Stripe." /></ListItem>
+              <ListItem><ListItemText primary="How do I contact support?" secondary="Click the Contact Support button below to email us." /></ListItem>
+              <ListItem><ListItemText primary="Can I cancel a booking?" secondary="Yes, you can cancel an upcoming booking from your dashboard." /></ListItem>
+            </List>
+            <Button variant="outlined" sx={{ mt: 2 }} href="mailto:matheeshadanindu@gmail.com?subject=Cab%20Booking%20Support">Contact Support</Button>
           </Paper>
           {/* Promotions & Offers */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Promotions & Offers</Typography>
-            <Alert severity="success">Get 10% off your next ride! Use code: CAB10</Alert>
+            {promotions.length === 0 ? (
+              <Alert severity="success">Get 10% off your next ride! Use code: CAB10</Alert>
+            ) : (
+              <List dense>
+                {promotions.map((promo, idx) => (
+                  <ListItem key={idx}>
+                    <ListItemText primary={promo.title} secondary={promo.description} />
+                  </ListItem>
+                ))}
+              </List>
+            )}
           </Paper>
           {/* Downloadable Documents */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Downloadable Documents</Typography>
-            <Button variant="outlined">Download Last Invoice</Button>
+            <List>
+              {pastBookings.filter(b => b.payment_status === 'paid' && b.payment_receipt_url).length === 0 && (
+                <ListItem><ListItemText primary="No invoices available yet. Paid/completed bookings will appear here." /></ListItem>
+              )}
+              {pastBookings.filter(b => b.payment_status === 'paid' && b.payment_receipt_url).map(b => (
+                <ListItem key={b.id}>
+                  <ListItemText
+                    primary={`Invoice for ${b.vehicle_model || b.vehicle || ''} (${b.start_time?.slice(0, 16).replace('T', ' ')})`}
+                    secondary={`Amount Paid: Rs. ${b.advance_paid?.toLocaleString()}`}
+                  />
+                  <Button
+                    variant="outlined"
+                    href={b.payment_receipt_url}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Download Invoice
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>

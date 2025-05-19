@@ -1052,6 +1052,15 @@ app.get('/api/analytics/user/:userId', async (req, res) => {
   }
 });
 
+// --- Promotions & Offers Endpoint ---
+app.get('/api/promotions', async (req, res) => {
+  // For now, return static demo data. Replace with DB fetch if needed.
+  res.json([
+    { title: '10% Off Your Next Ride', description: 'Use code CAB10 to get 10% off your next booking. Valid until 30 June 2025.' },
+    { title: 'Refer a Friend', description: 'Refer a friend and both get Rs. 500 ride credit after their first completed booking.' }
+  ]);
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
