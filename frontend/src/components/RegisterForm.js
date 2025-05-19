@@ -19,6 +19,8 @@ export default function RegisterForm() {
   const [addressFile, setAddressFile] = useState(null);
   const [idPreview, setIdPreview] = useState(null);
   const [addressPreview, setAddressPreview] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
+  const [profilePreview, setProfilePreview] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
@@ -42,6 +44,12 @@ export default function RegisterForm() {
     const file = e.target.files[0];
     setAddressFile(file);
     setAddressPreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleProfileFile = e => {
+    const file = e.target.files[0];
+    setProfileFile(file);
+    setProfilePreview(file ? URL.createObjectURL(file) : null);
   };
 
   const handleSubmit = async e => {
@@ -73,6 +81,10 @@ export default function RegisterForm() {
       setError('Please upload a document that proves your address.');
       return;
     }
+    if (!profileFile) {
+      setError('Please upload a profile picture.');
+      return;
+    }
     if (!agreed) {
       setError('You must agree to the Terms and Privacy Policy.');
       return;
@@ -85,6 +97,7 @@ export default function RegisterForm() {
       formData.append('password', form.password);
       formData.append('id_card', idFile);
       formData.append('address_proof', addressFile);
+      formData.append('profile_picture', profileFile);
       const res = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
         body: formData
@@ -187,6 +200,14 @@ export default function RegisterForm() {
             <input type="file" accept="image/*,application/pdf" hidden onChange={handleAddressFile} />
           </Button>
           {addressPreview && <Box sx={{ mt: 1 }}><img src={addressPreview} alt="Address Preview" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 4 }} /></Box>}
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2">Upload Profile Picture</Typography>
+          <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} sx={{ mt: 1 }}>
+            {profileFile ? 'Change File' : 'Upload File'}
+            <input type="file" accept="image/*" hidden onChange={handleProfileFile} />
+          </Button>
+          {profilePreview && <Box sx={{ mt: 1 }}><img src={profilePreview} alt="Profile Preview" style={{ maxWidth: 80, maxHeight: 80, borderRadius: '50%' }} /></Box>}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
           <input type="checkbox" id="agree" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ marginRight: 8 }} />

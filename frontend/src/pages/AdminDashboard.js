@@ -17,6 +17,8 @@ export default function AdminDashboard() {
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   const [driverError, setDriverError] = useState('');
   const [driverSuccess, setDriverSuccess] = useState('');
+  const [driverProfileFile, setDriverProfileFile] = useState(null);
+  const [driverProfilePreview, setDriverProfilePreview] = useState(null);
 
   // --- Package Management State ---
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
@@ -173,10 +175,18 @@ export default function AdminDashboard() {
 
   const handleDriverFormChange = e => setDriverForm({ ...driverForm, [e.target.name]: e.target.value });
 
+  const handleDriverProfileFile = e => {
+    const file = e.target.files[0];
+    setDriverProfileFile(file);
+    setDriverProfilePreview(file ? URL.createObjectURL(file) : null);
+  };
+
   const openDriverDialog = () => {
     setDriverForm({ name: '', email: '', password: '' });
     setDriverError('');
     setDriverSuccess('');
+    setDriverProfileFile(null);
+    setDriverProfilePreview(null);
     setDriverDialogOpen(true);
   };
 
@@ -186,15 +196,30 @@ export default function AdminDashboard() {
     e.preventDefault();
     setDriverError('');
     setDriverSuccess('');
+    if (!driverForm.name || !driverForm.email || !driverForm.password) {
+      setDriverError('All fields are required.');
+      return;
+    }
+    if (!driverProfileFile) {
+      setDriverError('Profile picture is required.');
+      return;
+    }
     try {
+      const formData = new FormData();
+      formData.append('name', driverForm.name);
+      formData.append('email', driverForm.email);
+      formData.append('password', driverForm.password);
+      formData.append('role', 'driver');
+      formData.append('profile_picture', driverProfileFile);
       const res = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...driverForm, role: 'driver' })
+        body: formData
       });
       if (res.ok) {
         setDriverSuccess('Driver added successfully!');
         setDriverForm({ name: '', email: '', password: '' });
+        setDriverProfileFile(null);
+        setDriverProfilePreview(null);
       } else {
         const err = await res.json();
         setDriverError(err.error || 'Failed to add driver.');
@@ -490,11 +515,19 @@ export default function AdminDashboard() {
       </Dialog>
       <Dialog open={driverDialogOpen} onClose={closeDriverDialog}>
         <DialogTitle>Add Driver</DialogTitle>
-        <form onSubmit={handleAddDriver}>
+        <form onSubmit={handleAddDriver} encType="multipart/form-data">
           <DialogContent>
             <TextField label="Name" name="name" value={driverForm.name} onChange={handleDriverFormChange} fullWidth margin="normal" required />
             <TextField label="Email" name="email" value={driverForm.email} onChange={handleDriverFormChange} fullWidth margin="normal" required />
             <TextField label="Password" name="password" type="password" value={driverForm.password} onChange={handleDriverFormChange} fullWidth margin="normal" required />
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Upload Profile Picture</Typography>
+              <Button component="label" variant="outlined" sx={{ mt: 1 }}>
+                {driverProfileFile ? 'Change File' : 'Upload File'}
+                <input type="file" accept="image/*" hidden onChange={handleDriverProfileFile} />
+              </Button>
+              {driverProfilePreview && <Box sx={{ mt: 1 }}><img src={driverProfilePreview} alt="Profile Preview" style={{ maxWidth: 80, maxHeight: 80, borderRadius: '50%' }} /></Box>}
+            </Box>
             {driverError && <div style={{ color: 'red' }}>{driverError}</div>}
             {driverSuccess && <div style={{ color: 'green' }}>{driverSuccess}</div>}
           </DialogContent>

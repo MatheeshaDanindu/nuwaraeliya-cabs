@@ -14,6 +14,7 @@ import AdminBookings from './pages/AdminBookings';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverAvailability from './pages/DriverAvailability';
 import VehicleDetails from './pages/VehicleDetails';
+import DriverDetails from './pages/DriverDetails';
 import Success from './pages/success';
 import Footer from './components/Footer';
 
@@ -42,6 +43,7 @@ function App() {
         <Route path="/vehicle-unavailability-admin" element={<VehicleUnavailabilityAdmin />} />
         <Route path="/admin-bookings" element={<AdminBookings />} />
         <Route path="/driver-dashboard" element={<DriverDashboard />} />
+        <Route path="/driver/:id" element={<DriverDetails />} />
         <Route path="/driver-availability" element={<DriverAvailability />} />
         <Route path ="/success" element={<Success />} />
       </Routes>

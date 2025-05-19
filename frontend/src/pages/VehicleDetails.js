@@ -7,7 +7,6 @@ export default function VehicleDetails() {
   const navigate = useNavigate();
   const [vehicle, setVehicle] = useState(null);
   const [packages, setPackages] = useState([]);
-  const [reviews, setReviews] = useState([]);
   const [vehicleReviews, setVehicleReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,21 +24,6 @@ export default function VehicleDetails() {
       // Fetch vehicle reviews
       const vehRevRes = await fetch(`http://localhost:5000/api/reviews/vehicle/${id}`);
       setVehicleReviews(vehRevRes.ok ? await vehRevRes.json() : []);
-      // Fetch reviews for all drivers of this vehicle (aggregate by driver)
-      // First, get all bookings for this vehicle with driver_id
-      const bRes = await fetch(`http://localhost:5000/api/bookings`);
-      const bookings = bRes.ok ? await bRes.json() : [];
-      const driverIds = [...new Set(bookings.filter(b => String(b.vehicle_id) === String(id) && b.driver_id).map(b => b.driver_id))];
-      // Fetch reviews for each driver
-      let allReviews = [];
-      for (let driverId of driverIds) {
-        const rRes = await fetch(`http://localhost:5000/api/reviews/driver/${driverId}`);
-        if (rRes.ok) {
-          const rData = await rRes.json();
-          allReviews = allReviews.concat(rData.map(r => ({ ...r, driver_id: driverId })));
-        }
-      }
-      setReviews(allReviews);
       setLoading(false);
     }
     fetchData();
@@ -101,6 +85,17 @@ export default function VehicleDetails() {
           ))}
         </Grid>
       )}
+      {/* Add link to driver details page if driver info is available */}
+      {vehicle && vehicle.driver_id && (
+        <Button
+          variant="outlined"
+          color="primary"
+          sx={{ mb: 2 }}
+          onClick={() => navigate(`/driver/${vehicle.driver_id}`)}
+        >
+          View Driver Details
+        </Button>
+      )}
       <Typography variant="h5" gutterBottom>Vehicle Reviews</Typography>
       {vehicleReviews.length === 0 ? (
         <Typography>No reviews for this vehicle yet.</Typography>
@@ -110,25 +105,6 @@ export default function VehicleDetails() {
             <Grid item xs={12} md={6} key={idx}>
               <Card>
                 <CardContent>
-                  <Rating value={review.rating} readOnly max={5} />
-                  <Typography variant="body2">{review.comment}</Typography>
-                  <Typography variant="caption" color="text.secondary">{review.created_at ? new Date(review.created_at).toLocaleString() : ''}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-      <Typography variant="h5" gutterBottom>Driver Reviews</Typography>
-      {reviews.length === 0 ? (
-        <Typography>No reviews for drivers of this vehicle.</Typography>
-      ) : (
-        <Grid container spacing={2}>
-          {reviews.map((review, idx) => (
-            <Grid item xs={12} md={6} key={idx}>
-              <Card>
-                <CardContent>
-                  <Typography variant="subtitle2">Driver ID: {review.driver_id}</Typography>
                   <Rating value={review.rating} readOnly max={5} />
                   <Typography variant="body2">{review.comment}</Typography>
                   <Typography variant="caption" color="text.secondary">{review.created_at ? new Date(review.created_at).toLocaleString() : ''}</Typography>

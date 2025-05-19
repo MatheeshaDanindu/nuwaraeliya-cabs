@@ -245,13 +245,15 @@ app.get('/api/packages/:id/advance', async (req, res) => {
 // Registration with file upload, pending approval
 app.post('/api/register', upload.fields([
   { name: 'id_card', maxCount: 1 },
-  { name: 'address_proof', maxCount: 1 }
+  { name: 'address_proof', maxCount: 1 },
+  { name: 'profile_picture', maxCount: 1 }
 ]), async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
   const idCardFile = req.files['id_card']?.[0];
   const addressProofFile = req.files['address_proof']?.[0];
-  if (!name || !email || !password || !idCardFile || !addressProofFile) {
-    return res.status(400).json({ error: 'All fields and uploads are required.' });
+  const profilePictureFile = req.files['profile_picture']?.[0];
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'All fields are required.' });
   }
   try {
     // Check if user exists
@@ -259,10 +261,22 @@ app.post('/api/register', upload.fields([
     if (exists.rows.length > 0) return res.status(400).json({ error: 'Email already registered.' });
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Insert user as pending approval
+    let userRole = role || 'customer';
+    let idCardPath = null;
+    let addressProofPath = null;
+    let profilePicturePath = profilePictureFile ? profilePictureFile.filename : null;
+    let approved = false;
+    if (userRole === 'customer') {
+      if (!idCardFile || !addressProofFile) {
+        return res.status(400).json({ error: 'ID card and address proof are required for customers.' });
+      }
+      idCardPath = idCardFile.filename;
+      addressProofPath = addressProofFile.filename;
+    }
+    // For drivers, only profile picture is required
     const result = await pool.query(
-      'INSERT INTO users (name, email, password, id_card_path, address_proof_path, approved, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [name, email, hashedPassword, idCardFile.filename, addressProofFile.filename, false, 'customer']
+      'INSERT INTO users (name, email, password, id_card_path, address_proof_path, profile_picture_path, approved, role) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+      [name, email, hashedPassword, idCardPath, addressProofPath, profilePicturePath, approved, userRole]
     );
     res.json({ success: true, pending: true });
   } catch (err) {
@@ -562,7 +576,7 @@ app.post('/api/bookings/:id/manual-payment-status', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query('SELECT id, name, email, phone FROM users WHERE id = $1', [id]);
+    const result = await pool.query('SELECT id, name, email, phone, profile_picture_path FROM users WHERE id = $1', [id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(result.rows[0]);
   } catch (err) {
@@ -580,6 +594,36 @@ app.put('/api/users/:id', async (req, res) => {
       [name, email, phone, id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update user profile picture
+app.put('/api/users/:id/profile-picture', upload.single('profile_picture'), async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone } = req.body;
+  const profilePictureFile = req.file;
+  try {
+    // Get current user to delete old picture if needed
+    const userRes = await pool.query('SELECT profile_picture_path FROM users WHERE id = $1', [id]);
+    if (!userRes.rows.length) return res.status(404).json({ error: 'User not found' });
+    let profilePicturePath = userRes.rows[0].profile_picture_path;
+    let newProfilePicturePath = profilePicturePath;
+    if (profilePictureFile) {
+      // Delete old picture if exists
+      if (profilePicturePath) {
+        const oldPath = path.join(uploadsDir, profilePicturePath);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      newProfilePicturePath = profilePictureFile.filename;
+    }
+    // Update user info and profile picture
+    const result = await pool.query(
+      'UPDATE users SET name = $1, email = $2, phone = $3, profile_picture_path = $4 WHERE id = $5 RETURNING id, name, email, phone, profile_picture_path',
+      [name, email, phone, newProfilePicturePath, id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
