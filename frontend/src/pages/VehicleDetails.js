@@ -8,6 +8,7 @@ export default function VehicleDetails() {
   const [vehicle, setVehicle] = useState(null);
   const [packages, setPackages] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [vehicleReviews, setVehicleReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,6 +22,9 @@ export default function VehicleDetails() {
       // Fetch packages
       const pRes = await fetch(`http://localhost:5000/api/vehicles/${id}/packages`);
       setPackages(pRes.ok ? await pRes.json() : []);
+      // Fetch vehicle reviews
+      const vehRevRes = await fetch(`http://localhost:5000/api/reviews/vehicle/${id}`);
+      setVehicleReviews(vehRevRes.ok ? await vehRevRes.json() : []);
       // Fetch reviews for all drivers of this vehicle (aggregate by driver)
       // First, get all bookings for this vehicle with driver_id
       const bRes = await fetch(`http://localhost:5000/api/bookings`);
@@ -29,7 +33,7 @@ export default function VehicleDetails() {
       // Fetch reviews for each driver
       let allReviews = [];
       for (let driverId of driverIds) {
-        const rRes = await fetch(`http://localhost:5000/api/driver-reviews/${driverId}`);
+        const rRes = await fetch(`http://localhost:5000/api/reviews/driver/${driverId}`);
         if (rRes.ok) {
           const rData = await rRes.json();
           allReviews = allReviews.concat(rData.map(r => ({ ...r, driver_id: driverId })));
@@ -91,6 +95,24 @@ export default function VehicleDetails() {
                       {pkg.description}
                     </Typography>
                   )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+      <Typography variant="h5" gutterBottom>Vehicle Reviews</Typography>
+      {vehicleReviews.length === 0 ? (
+        <Typography>No reviews for this vehicle yet.</Typography>
+      ) : (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {vehicleReviews.map((review, idx) => (
+            <Grid item xs={12} md={6} key={idx}>
+              <Card>
+                <CardContent>
+                  <Rating value={review.rating} readOnly max={5} />
+                  <Typography variant="body2">{review.comment}</Typography>
+                  <Typography variant="caption" color="text.secondary">{review.created_at ? new Date(review.created_at).toLocaleString() : ''}</Typography>
                 </CardContent>
               </Card>
             </Grid>

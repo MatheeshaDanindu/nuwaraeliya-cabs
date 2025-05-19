@@ -490,10 +490,10 @@ app.put('/api/bookings/:id/end', async (req, res) => {
   const extra_km_fee = extra_km * (pkg.per_km_rate || 0);
   const extra_hour_fee = extra_hours * (pkg.per_hour_rate || 0);
   const total_fee = Number(pkg.price) + extra_km_fee + extra_hour_fee;
-  // Update booking
+  // Update booking and set status to completed
   const result = await pool.query(
-    'UPDATE bookings SET end_meter = $1, actual_end_time = $2, total_fee = $3 WHERE id = $4 RETURNING *',
-    [end_meter, actual_end_time, total_fee, id]
+    'UPDATE bookings SET end_meter = $1, actual_end_time = $2, total_fee = $3, status = $4 WHERE id = $5 RETURNING *',
+    [end_meter, actual_end_time, total_fee, 'completed', id]
   );
   res.json({ ...result.rows[0], total_km, total_hours, extra_km, extra_hours, extra_km_fee, extra_hour_fee });
 });
@@ -896,6 +896,69 @@ app.get('/api/reports/vehicle-usage', async (req, res) => {
 
 const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
+
+// --- Customer Reviews Endpoints ---
+// Submit a review for a completed booking (one per booking)
+app.post('/api/reviews', async (req, res) => {
+  const { booking_id, rating, comment } = req.body;
+  const user = req.user || req.body.user; // Support JWT or direct user_id for now
+  if (!booking_id || !rating || !user) {
+    return res.status(400).json({ error: 'Booking, rating, and user required.' });
+  }
+  try {
+    // Check booking exists, belongs to user, and is completed
+    const bookingRes = await pool.query('SELECT * FROM bookings WHERE id = $1', [booking_id]);
+    if (!bookingRes.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    const booking = bookingRes.rows[0];
+    if (booking.user_id !== (user.id || user)) return res.status(403).json({ error: 'Not your booking' });
+    if (booking.status !== 'completed') return res.status(400).json({ error: 'Can only review completed rides' });
+    // Check if review already exists
+    const exists = await pool.query('SELECT 1 FROM reviews WHERE booking_id = $1', [booking_id]);
+    if (exists.rows.length) return res.status(400).json({ error: 'Review already submitted' });
+    // Insert review
+    const result = await pool.query(
+      'INSERT INTO reviews (booking_id, user_id, vehicle_id, driver_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [booking_id, booking.user_id, booking.vehicle_id, booking.driver_id, rating, comment || null]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get all reviews for a vehicle
+app.get('/api/reviews/vehicle/:vehicleId', async (req, res) => {
+  const { vehicleId } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM reviews WHERE vehicle_id = $1 ORDER BY created_at DESC', [vehicleId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all reviews for a driver
+app.get('/api/reviews/driver/:driverId', async (req, res) => {
+  const { driverId } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM reviews WHERE driver_id = $1 ORDER BY created_at DESC', [driverId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// (Optional) Get review for a booking
+app.get('/api/reviews/booking/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM reviews WHERE booking_id = $1', [bookingId]);
+    if (!result.rows.length) return res.status(404).json({ error: 'No review' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Start server
 app.listen(PORT, () => {

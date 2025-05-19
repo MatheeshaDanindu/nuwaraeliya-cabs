@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, Paper, List, ListItem, ListItemText, Alert } from '@mui/material';
 import PayAdvance from '../components/PayAdvance';
+import ReviewDialog from '../components/ReviewDialog';
 
 export default function Profile() {
   const [profile, setProfile] = useState({ name: '', email: '', phone: '' });
@@ -9,6 +10,8 @@ export default function Profile() {
   const [bookings, setBookings] = useState([]);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [reviewDialog, setReviewDialog] = useState({ open: false, bookingId: null });
+  const [reviewedBookings, setReviewedBookings] = useState({});
 
   useEffect(() => {
     // Fetch user info from localStorage
@@ -22,6 +25,25 @@ export default function Profile() {
         .then(data => setBookings(Array.isArray(data) ? data : []));
     }
   }, [editing, success]);
+
+  // Fetch which bookings have reviews (only for completed bookings)
+  useEffect(() => {
+    async function fetchReviews() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) return;
+      // Only check completed bookings
+      const completed = bookings.filter(b => b.status === 'completed');
+      const reviewMap = {};
+      for (let b of completed) {
+        try {
+          const r = await fetch(`http://localhost:5000/api/reviews/booking/${b.id}`);
+          reviewMap[b.id] = r.ok;
+        } catch { reviewMap[b.id] = false; }
+      }
+      setReviewedBookings(reviewMap);
+    }
+    fetchReviews();
+  }, [bookings]);
 
   const handleChange = e => setProfile({ ...profile, [e.target.name]: e.target.value });
 
@@ -133,7 +155,15 @@ export default function Profile() {
                   .then(res => res.json())
                   .then(data => setBookings(Array.isArray(data) ? data : []));
               }} />
-            ) : b.status !== 'cancelled' && b.status !== 'completed' ? (
+            ) : b.status === 'completed' ? (
+              !reviewedBookings[b.id] ? (
+                <Button size="small" color="primary" variant="contained" onClick={() => setReviewDialog({ open: true, bookingId: b.id })}>
+                  Rate & Review
+                </Button>
+              ) : (
+                <Typography variant="body2" color="success.main">Reviewed</Typography>
+              )
+            ) : b.status !== 'cancelled' ? (
               <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
                 Cancel
               </Button>
@@ -160,6 +190,12 @@ export default function Profile() {
           </ListItem>
         ))}
       </List>
+      <ReviewDialog
+        open={reviewDialog.open}
+        bookingId={reviewDialog.bookingId}
+        onClose={() => setReviewDialog({ open: false, bookingId: null })}
+        onSubmit={() => setSuccess('Review submitted!')}
+      />
     </Box>
   );
 }
