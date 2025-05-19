@@ -54,8 +54,10 @@ export default function LoginForm() {
         // Redirect based on role
         if (data.user.role && data.user.role.trim().toLowerCase() === 'driver') {
           navigate('/driver-dashboard');
+        } else if (data.user.role && data.user.role.trim().toLowerCase() === 'admin') {
+          navigate('/AdminDashboard');
         } else {
-          navigate('/Dashboard');
+          navigate('/dashboard');
         }
       } else {
         const err = await res.json();

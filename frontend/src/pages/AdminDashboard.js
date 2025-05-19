@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, Card, CardContent, CardHeader, Divider, Snackbar, Alert as MuiAlert, Dialog as MuiDialog } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 export default function AdminDashboard() {
   const [vehicles, setVehicles] = useState([]);
@@ -329,6 +332,38 @@ export default function AdminDashboard() {
     }
   };
 
+  // --- Chart Data Preparation ---
+  const bookingsData = {
+    labels: ['Total Bookings', 'Total Cancellations'],
+    datasets: [
+      {
+        label: 'Bookings',
+        data: [report.totalBookings, report.totalCancellations],
+        backgroundColor: ['#1976d2', '#e53935'],
+      },
+    ],
+  };
+  const revenueData = {
+    labels: ['Revenue'],
+    datasets: [
+      {
+        label: 'Total Revenue',
+        data: [report.totalRevenue],
+        backgroundColor: ['#43a047'],
+      },
+    ],
+  };
+  const vehicleUsageData = {
+    labels: vehicleUsage.map(v => v.model),
+    datasets: [
+      {
+        label: 'Bookings',
+        data: vehicleUsage.map(v => v.booking_count),
+        backgroundColor: vehicleUsage.map((_, i) => `hsl(${i * 40}, 70%, 60%)`),
+      },
+    ],
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
@@ -428,11 +463,27 @@ export default function AdminDashboard() {
         ) : (
           <>
             <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Bookings</Typography><Typography variant="h6">{report.totalBookings}</Typography></Paper></Grid>
-              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Cancellations</Typography><Typography variant="h6">{report.totalCancellations}</Typography></Paper></Grid>
-              <Grid item xs={12} md={4}><Paper sx={{ p: 2 }}><Typography>Total Revenue</Typography><Typography variant="h6">Rs. {Number(report.totalRevenue).toLocaleString()}</Typography></Paper></Grid>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography>Total Bookings vs Cancellations</Typography>
+                  <Bar data={bookingsData} options={{ plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} height={180} />
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography>Total Revenue</Typography>
+                  <Doughnut data={revenueData} options={{ plugins: { legend: { display: false } } }} height={180} />
+                  <Typography variant="h6" sx={{ mt: 2 }}>Rs. {Number(report.totalRevenue).toLocaleString()}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography>Vehicle Usage</Typography>
+                  <Pie data={vehicleUsageData} options={{ plugins: { legend: { display: true } } }} height={180} />
+                </Paper>
+              </Grid>
             </Grid>
-            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Vehicle Usage</Typography>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Vehicle Usage Table</Typography>
             <Paper sx={{ p: 2, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>

@@ -177,6 +177,12 @@ export default function Dashboard() {
       .catch(() => setPromotions([]));
   }, []);
 
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      navigate('/AdminDashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
   // Split bookings
   const now = new Date();
   const upcomingBookings = bookings.filter(b => new Date(b.end_time) >= now && b.status !== 'completed' && b.status !== 'cancelled');
@@ -217,9 +223,8 @@ export default function Dashboard() {
     );
   }
 
-  // Role-based dashboard rendering
   if (user?.role === 'admin') {
-    return <AdminDashboard />;
+    return null;
   }
 
   return (
