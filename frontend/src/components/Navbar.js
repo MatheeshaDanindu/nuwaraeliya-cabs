@@ -93,7 +93,13 @@ export default function Navbar() {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', flexGrow: 1 }}>
           <Button color="inherit" component={Link} to="/">Home</Button>
           <Button color="inherit" component={Link} to="/vehicles">Vehicles</Button>
-          {isLoggedIn && !isDriver && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
+          {isLoggedIn && !isDriver && !isAdmin && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
+          {isAdmin && <Button color="inherit" component={Link} to="/admin-bookings">Manage Bookings</Button>}
+          {isAdmin && <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>}
+          {isAdmin && <Button color="inherit" component={Link} to="/vehicles">Manage Vehicles</Button>}
+          
+          {isDriver && <Button color="inherit" component={Link} to="/driver-availability">My Unavailability</Button>}
+          
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Tooltip title={appliedDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -122,7 +128,7 @@ export default function Navbar() {
               </IconButton>
               <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleAvatarMenuClose}>
                 <MenuItem component={Link} to="/profile" onClick={handleAvatarMenuClose}>Profile</MenuItem>
-                <MenuItem component={Link} to={isAdmin ? "/admin-dashboard" : isDriver ? "/driver-dashboard" : "/dashboard"} onClick={handleAvatarMenuClose}>Dashboard</MenuItem>
+                <MenuItem component={Link} to={isAdmin ? "/AdminDashboard" : isDriver ? "/driver-dashboard" : "/dashboard"} onClick={handleAvatarMenuClose}>Dashboard</MenuItem>
                 <MenuItem onClick={() => { handleAvatarMenuClose(); handleLogout(); }}>Logout</MenuItem>
               </Menu>
             </>
@@ -142,9 +148,14 @@ export default function Navbar() {
             {isLoggedIn && !isDriver && <ListItemButton component={Link} to="/booking"><ListItemText primary="Book Now" /></ListItemButton>}
             {isLoggedIn && <ListItemButton component={Link} to="/profile"><ListItemText primary="Profile" /></ListItemButton>}
             {isLoggedIn && <ListItemButton component={Link} to={isAdmin ? "/admin-dashboard" : isDriver ? "/driver-dashboard" : "/dashboard"}><ListItemText primary="Dashboard" /></ListItemButton>}
+            {isDriver && <ListItemButton component={Link} to="/driver-dashboard"><ListItemText primary="Driver Dashboard" /></ListItemButton>}
             {isDriver && <ListItemButton component={Link} to="/driver-availability"><ListItemText primary="My Unavailability" /></ListItemButton>}
-            {isAdmin && <ListItemButton component={Link} to="/vehicle-unavailability-admin"><ListItemText primary="Block Vehicle" /></ListItemButton>}
+            {isDriver && <ListItemButton component={Link} to="/admin-bookings"><ListItemText primary="My Bookings" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/admin-dashboard"><ListItemText primary="Admin Dashboard" /></ListItemButton>}
             {isAdmin && <ListItemButton component={Link} to="/admin-bookings"><ListItemText primary="Manage Bookings" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/vehicle-unavailability-admin"><ListItemText primary="Block Vehicle" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/vehicles"><ListItemText primary="Manage Vehicles" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/dashboard"><ListItemText primary="Analytics" /></ListItemButton>}
             {isLoggedIn && <ListItemButton onClick={handleLogout}><ListItemText primary="Logout" /></ListItemButton>}
             {!isLoggedIn && <ListItemButton component={Link} to="/login"><ListItemText primary="Login" /></ListItemButton>}
           </List>
