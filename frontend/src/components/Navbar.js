@@ -9,6 +9,25 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Avatar from '@mui/material/Avatar';
+import MenuIcon from '@mui/icons-material/Menu';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import Badge from '@mui/material/Badge';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import { useThemeMode } from '../ThemeContext';
 
 export default function Navbar() {
   const location = useLocation();
@@ -17,6 +36,13 @@ export default function Navbar() {
     return stored ? JSON.parse(stored) : null;
   });
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+  const notifications = [
+    { id: 1, text: 'Booking #123 approved' },
+    { id: 2, text: 'New promotion: 10% off!' }
+  ];
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -38,47 +64,102 @@ export default function Navbar() {
     setLogoutDialogOpen(false);
   };
 
+  const handleAvatarMenu = (event) => setAnchorEl(event.currentTarget);
+  const handleAvatarMenuClose = () => setAnchorEl(null);
+  const handleDrawerToggle = () => setDrawerOpen(!drawerOpen);
+  const handleNotifMenu = (event) => setNotifAnchorEl(event.currentTarget);
+  const handleNotifMenuClose = () => setNotifAnchorEl(null);
+
+  const { darkMode, setDarkMode } = useThemeMode();
+  const handleThemeToggle = () => setDarkMode((prev) => !prev);
+
   const isAdmin = user && user.role && user.role.trim().toLowerCase() === 'admin';
   const isDriver = user && user.role && user.role.trim().toLowerCase() === 'driver';
   const isLoggedIn = !!user;
 
-  return (
-    <AppBar position="sticky" color="primary" elevation={2}>
+  const theme = useTheme();
+  const appliedDarkMode = darkMode;
+
+  const navbarContent = (
+    <AppBar position="sticky" color="primary" elevation={2} sx={{ zIndex: 1201 }}>
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 1, display: { xs: 'inline-flex', md: 'none' } }} onClick={handleDrawerToggle}>
+          <MenuIcon />
+        </IconButton>
+        <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} component={Link} to="/">
+          <img src="/logo.png" alt="Logo" style={{ height: 32, verticalAlign: 'middle', marginRight: 8 }} />
           Nuwaraeliya Cabs
         </Typography>
-        <Button color="inherit" component={Link} to="/">Home</Button>
-        <Button color="inherit" component={Link} to="/vehicles">Vehicles</Button>
-        {isLoggedIn && (
-          <>
-            {!isDriver && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
-            <Button color="inherit" component={Link} to="/profile">Profile</Button>
-            <Button color="inherit" component={Link} to={isAdmin ? "/AdminDashboard" : isDriver ? "/driver-dashboard" : "/dashboard"}>Dashboard</Button>
-            {isDriver && (
-              <Button color="inherit" component={Link} to="/driver-availability">My Unavailability</Button>
-            )}
-            {isAdmin && (
-              <>
-                <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>
-                <Button color="inherit" component={Link} to="/admin-bookings">Manage Bookings</Button>
-              </>
-            )}
-            <Button color="inherit" onClick={handleLogout}>Logout</Button>
-            <Dialog open={logoutDialogOpen} onClose={cancelLogout}>
-              <DialogTitle>Confirm Logout</DialogTitle>
-              <DialogContent>Are you sure you want to log out?</DialogContent>
-              <DialogActions>
-                <Button onClick={cancelLogout}>Cancel</Button>
-                <Button onClick={confirmLogout} color="error" variant="contained">Logout</Button>
-              </DialogActions>
-            </Dialog>
-          </>
-        )}
-        {!isLoggedIn && (
-          <Button color="inherit" component={Link} to="/login">Login</Button>
-        )}
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', flexGrow: 1 }}>
+          <Button color="inherit" component={Link} to="/">Home</Button>
+          <Button color="inherit" component={Link} to="/vehicles">Vehicles</Button>
+          {isLoggedIn && !isDriver && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Tooltip title={appliedDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton color="inherit" onClick={handleThemeToggle} aria-label="Toggle dark mode">
+              {appliedDarkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          </Tooltip>
+          <IconButton color="inherit" onClick={handleNotifMenu} aria-label="Notifications">
+            <Badge badgeContent={notifications.length} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+          <Menu anchorEl={notifAnchorEl} open={Boolean(notifAnchorEl)} onClose={handleNotifMenuClose}>
+            {notifications.length === 0 ? (
+              <MenuItem disabled>No notifications</MenuItem>
+            ) : notifications.map(n => (
+              <MenuItem key={n.id}>{n.text}</MenuItem>
+            ))}
+          </Menu>
+          {isLoggedIn ? (
+            <>
+              <IconButton color="inherit" onClick={handleAvatarMenu} sx={{ ml: 1 }}>
+                <Avatar src={user?.profile_picture_path ? `/uploads/${user.profile_picture_path}` : undefined}>
+                  {user?.profile_picture_path ? '' : user?.name?.[0]}
+                </Avatar>
+              </IconButton>
+              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleAvatarMenuClose}>
+                <MenuItem component={Link} to="/profile" onClick={handleAvatarMenuClose}>Profile</MenuItem>
+                <MenuItem component={Link} to={isAdmin ? "/admin-dashboard" : isDriver ? "/driver-dashboard" : "/dashboard"} onClick={handleAvatarMenuClose}>Dashboard</MenuItem>
+                <MenuItem onClick={() => { handleAvatarMenuClose(); handleLogout(); }}>Logout</MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <Button color="inherit" component={Link} to="/login">Login</Button>
+          )}
+        </Box>
       </Toolbar>
+      <Drawer anchor="left" open={drawerOpen} onClose={handleDrawerToggle}>
+        <Box sx={{ width: 240 }} role="presentation" onClick={handleDrawerToggle}>
+          <List>
+            <ListItemButton component={Link} to="/">
+              <ListItemIcon><img src="/logo.png" alt="Logo" style={{ height: 24 }} /></ListItemIcon>
+              <ListItemText primary="Home" />
+            </ListItemButton>
+            <ListItemButton component={Link} to="/vehicles"><ListItemText primary="Vehicles" /></ListItemButton>
+            {isLoggedIn && !isDriver && <ListItemButton component={Link} to="/booking"><ListItemText primary="Book Now" /></ListItemButton>}
+            {isLoggedIn && <ListItemButton component={Link} to="/profile"><ListItemText primary="Profile" /></ListItemButton>}
+            {isLoggedIn && <ListItemButton component={Link} to={isAdmin ? "/admin-dashboard" : isDriver ? "/driver-dashboard" : "/dashboard"}><ListItemText primary="Dashboard" /></ListItemButton>}
+            {isDriver && <ListItemButton component={Link} to="/driver-availability"><ListItemText primary="My Unavailability" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/vehicle-unavailability-admin"><ListItemText primary="Block Vehicle" /></ListItemButton>}
+            {isAdmin && <ListItemButton component={Link} to="/admin-bookings"><ListItemText primary="Manage Bookings" /></ListItemButton>}
+            {isLoggedIn && <ListItemButton onClick={handleLogout}><ListItemText primary="Logout" /></ListItemButton>}
+            {!isLoggedIn && <ListItemButton component={Link} to="/login"><ListItemText primary="Login" /></ListItemButton>}
+          </List>
+        </Box>
+      </Drawer>
+      <Dialog open={logoutDialogOpen} onClose={cancelLogout}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>Are you sure you want to log out?</DialogContent>
+        <DialogActions>
+          <Button onClick={cancelLogout}>Cancel</Button>
+          <Button onClick={confirmLogout} color="error" variant="contained">Logout</Button>
+        </DialogActions>
+      </Dialog>
     </AppBar>
   );
+
+  return navbarContent;
 }
