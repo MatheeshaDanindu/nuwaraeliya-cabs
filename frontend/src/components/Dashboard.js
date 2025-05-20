@@ -261,19 +261,7 @@ export default function Dashboard() {
               <Alert severity="info">No new notifications.</Alert>
             )}
           </Paper>
-          {/* Quick Booking Widget */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="subtitle1">Quick Booking</Typography>
-            <form onSubmit={handleQuickBooking}>
-              <TextField label="Pickup Location" name="pickup" size="small" sx={{ mr: 1, mb: 1 }} value={quickBooking.pickup} onChange={handleQuickBookingChange} required />
-              <TextField label="Drop Location" name="drop" size="small" sx={{ mr: 1, mb: 1 }} value={quickBooking.drop} onChange={handleQuickBookingChange} required />
-              <TextField label="Start Date & Time" name="start_time" type="datetime-local" size="small" sx={{ mr: 1, mb: 1 }} InputLabelProps={{ shrink: true }} value={quickBooking.start_time} onChange={handleQuickBookingChange} required />
-              <TextField label="End Date & Time" name="end_time" type="datetime-local" size="small" sx={{ mr: 1, mb: 1 }} InputLabelProps={{ shrink: true }} value={quickBooking.end_time} onChange={handleQuickBookingChange} required />
-              <Button type="submit" variant="contained">Book Now</Button>
-            </form>
-            {quickBookingSuccess && <Alert severity="success" sx={{ mt: 1 }}>{quickBookingSuccess}</Alert>}
-            {quickBookingError && <Alert severity="error" sx={{ mt: 1 }}>{quickBookingError}</Alert>}
-          </Paper>
+          
           {/* Upcoming Bookings */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6">Upcoming Bookings</Typography>

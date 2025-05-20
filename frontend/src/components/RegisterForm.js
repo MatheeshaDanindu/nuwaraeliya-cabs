@@ -23,7 +23,14 @@ export default function RegisterForm() {
   const [profilePreview, setProfilePreview] = useState(null);
   const navigate = useNavigate();
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = e => {
+    const { name, value } = e.target;
+    if (name === 'name') {
+      // Only allow letters and spaces
+      if (!/^[a-zA-Z\s]*$/.test(value)) return;
+    }
+    setForm({ ...form, [name]: value });
+  };
 
   const handlePasswordChange = e => {
     const value = e.target.value;
@@ -59,6 +66,10 @@ export default function RegisterForm() {
     // Input validation
     if (!form.name.trim()) {
       setError('Name is required.');
+      return;
+    }
+    if (!/^[a-zA-Z\s]+$/.test(form.name.trim())) {
+      setError('Name can only contain letters and spaces.');
       return;
     }
     if (!form.email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
@@ -118,7 +129,7 @@ export default function RegisterForm() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}>
       <Box sx={{ textAlign: 'center', mb: 2 }}>
-        <img src="/logo.png" alt="Nuwara Eliya Cabs Logo" style={{ width: 64, marginBottom: 8 }} />
+        <img src="/logo.jpg" alt="Nuwara Eliya Cabs Logo" style={{ width: 64, marginBottom: 8 }} />
         <Typography variant="h5">Create Your Account</Typography>
         <Typography variant="body2" color="text.secondary">Join Nuwara Eliya Cabs for the best ride experience</Typography>
       </Box>
@@ -156,11 +167,7 @@ export default function RegisterForm() {
           value={form.password}
           required
           InputProps={{
-            endAdornment: (
-              <Button onClick={() => setShowPassword(v => !v)} tabIndex={-1} sx={{ minWidth: 0, color: 'inherit' }} aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                {showPassword ? <VisibilityOff /> : <Visibility />}
-              </Button>
-            )
+            
           }}
         />
         {form.password && (
@@ -178,11 +185,7 @@ export default function RegisterForm() {
           value={form.confirmPassword}
           required
           InputProps={{
-            endAdornment: (
-              <Button onClick={() => setShowConfirm(v => !v)} tabIndex={-1} sx={{ minWidth: 0, color: 'inherit' }} aria-label={showConfirm ? 'Hide password' : 'Show password'}>
-                {showConfirm ? <VisibilityOff /> : <Visibility />}
-              </Button>
-            )
+            
           }}
         />
         <Box sx={{ mt: 2 }}>

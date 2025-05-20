@@ -21,6 +21,16 @@ export default function Booking() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Helper to get current datetime in 'YYYY-MM-DDTHH:MM' format for min attribute
+  const getNowForInput = () => {
+    const now = new Date();
+    now.setSeconds(0, 0); // Remove seconds/milliseconds
+    const tzOffset = -now.getTimezoneOffset();
+    const diff = tzOffset >= 0 ? '+' : '-';
+    const pad = n => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  };
+
   // Redirect to login if not logged in
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -42,8 +52,12 @@ export default function Booking() {
       } else {
         setVehicles([]);
       }
-      // Fetch drivers
-      const driversRes = await fetch('http://localhost:5000/api/users?role=driver');
+      // Fetch only available drivers for the selected date range
+      let driversUrl = 'http://localhost:5000/api/users?role=driver';
+      if (form.startDate && form.endDate) {
+        driversUrl = `http://localhost:5000/api/drivers/available?start=${encodeURIComponent(form.startDate)}&end=${encodeURIComponent(form.endDate)}`;
+      }
+      const driversRes = await fetch(driversUrl);
       if (driversRes.ok) {
         setDrivers(await driversRes.json());
       } else {
@@ -85,7 +99,8 @@ export default function Booking() {
   }, [form.packageId]);
 
   const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
     setError('');
     setSuccess(false);
     setInfo('');
@@ -99,6 +114,11 @@ export default function Booking() {
     setInfo('');
     if (!form.packageId) {
       setError('Please select a package.');
+      setLoading(false);
+      return;
+    }
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setError('End date/time cannot be before start date/time.');
       setLoading(false);
       return;
     }
@@ -142,6 +162,36 @@ export default function Booking() {
       {info && <Alert severity="info">{info}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
       <form onSubmit={handleSubmit}>
+        <TextField
+          label="Start Date & Time"
+          name="startDate"
+          type="datetime-local"
+          value={form.startDate}
+          onChange={handleChange}
+          fullWidth
+          margin="normal"
+          InputLabelProps={{ shrink: true }}
+          required
+          inputProps={{ min: getNowForInput() }}
+        />
+        <TextField
+          label="End Date & Time"
+          name="endDate"
+          type="datetime-local"
+          value={form.endDate}
+          onChange={handleChange}
+          fullWidth
+          margin="normal"
+          InputLabelProps={{ shrink: true }}
+          required
+          inputProps={{ min: form.startDate ? form.startDate : getNowForInput() }}
+          error={Boolean(error) || (form.startDate && form.endDate && form.endDate < form.startDate)}
+          helperText={
+            form.startDate && form.endDate && form.endDate < form.startDate
+              ? 'End date/time cannot be before start date/time.'
+              : undefined
+          }
+        />
         <TextField
           select
           label="Select Vehicle"
@@ -226,28 +276,7 @@ export default function Booking() {
             <MenuItem key={d.id} value={d.id}>{d.name} ({d.email})</MenuItem>
           ))}
         </TextField>
-        <TextField
-          label="Start Date & Time"
-          name="startDate"
-          type="datetime-local"
-          value={form.startDate}
-          onChange={handleChange}
-          fullWidth
-          margin="normal"
-          InputLabelProps={{ shrink: true }}
-          required
-        />
-        <TextField
-          label="End Date & Time"
-          name="endDate"
-          type="datetime-local"
-          value={form.endDate}
-          onChange={handleChange}
-          fullWidth
-          margin="normal"
-          InputLabelProps={{ shrink: true }}
-          required
-        />
+        
         <Button
           type="submit"
           variant="contained"

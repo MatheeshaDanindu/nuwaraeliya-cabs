@@ -1061,6 +1061,25 @@ app.get('/api/promotions', async (req, res) => {
   ]);
 });
 
+// Endpoint to get available drivers for a date range (not assigned to any booking in the range)
+app.get('/api/drivers/available', async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
+  try {
+    // Find drivers who are not assigned to any booking that overlaps with the given range
+    const result = await pool.query(`
+      SELECT id, name, email FROM users 
+      WHERE role = 'driver' AND id NOT IN (
+        SELECT driver_id FROM bookings 
+        WHERE driver_id IS NOT NULL AND NOT (end_time <= $1 OR start_time >= $2)
+      )
+    `, [start, end]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

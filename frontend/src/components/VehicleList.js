@@ -7,7 +7,16 @@ export default function VehicleList() {
   const [vehicles, setVehicles] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [dates, setDates] = useState({ start: '', end: '' });
+  const [dateError, setDateError] = useState('');
   const navigate = useNavigate();
+
+  // Get today's date in yyyy-MM-ddTHH:mm format for min attribute
+  const now = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  // Validation: End date cannot be before start date
+  const endMin = dates.start ? dates.start : todayStr;
 
   useEffect(() => {
     fetch('http://localhost:5000/api/vehicles')
@@ -25,8 +34,14 @@ export default function VehicleList() {
   const handleDateChange = e => {
     const { name, value } = e.target;
     const newDates = { ...dates, [name]: value };
+    // Validation
+    if (name === 'end' && newDates.start && value < newDates.start) {
+      setDateError('End date/time cannot be before start date/time.');
+    } else {
+      setDateError('');
+    }
     setDates(newDates);
-    if (newDates.start && newDates.end) {
+    if (newDates.start && newDates.end && !dateError) {
       // Fetch available vehicles for the selected dates
       fetch(`http://localhost:5000/api/vehicles/available?start=${encodeURIComponent(newDates.start)}&end=${encodeURIComponent(newDates.end)}`)
         .then(res => res.json())
@@ -39,6 +54,7 @@ export default function VehicleList() {
 
   const handleClear = () => {
     setDates({ start: '', end: '' });
+    setDateError('');
     setFiltered(vehicles.filter(v => v.status === 'available'));
   };
 
@@ -52,6 +68,7 @@ export default function VehicleList() {
           value={dates.start}
           onChange={handleDateChange}
           InputLabelProps={{ shrink: true }}
+          inputProps={{ min: todayStr }}
         />
         <TextField
           label="End Date & Time"
@@ -60,6 +77,9 @@ export default function VehicleList() {
           value={dates.end}
           onChange={handleDateChange}
           InputLabelProps={{ shrink: true }}
+          inputProps={{ min: endMin }}
+          error={!!dateError}
+          helperText={dateError}
         />
         <Button variant="outlined" color="secondary" onClick={handleClear} sx={{ alignSelf: 'center', height: 40 }}>
           Clear

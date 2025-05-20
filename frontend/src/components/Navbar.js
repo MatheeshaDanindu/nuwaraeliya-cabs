@@ -45,8 +45,20 @@ export default function Navbar() {
   ];
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    setUser(stored ? JSON.parse(stored) : null);
+    // Only force redirect and clear user on first load after server restart, not on every navigation
+    // Use a sessionStorage flag to ensure this only happens once per browser session
+    if (!sessionStorage.getItem('initialRedirectDone')) {
+      if (window.location.pathname !== '/') {
+        window.location.replace('/');
+        setUser(null);
+        localStorage.removeItem('user');
+      }
+      sessionStorage.setItem('initialRedirectDone', 'true');
+    } else {
+      // Normal navigation: just update user state
+      const stored = localStorage.getItem('user');
+      setUser(stored ? JSON.parse(stored) : null);
+    }
   }, [location]);
 
   const handleLogout = () => {
@@ -87,7 +99,7 @@ export default function Navbar() {
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} component={Link} to="/">
-          <img src="/logo.png" alt="Logo" style={{ height: 32, verticalAlign: 'middle', marginRight: 8 }} />
+          <img src="/logo.jpg" alt="Logo" style={{ height: 32, verticalAlign: 'middle', marginRight: 8 }} />
           Nuwaraeliya Cabs
         </Typography>
         <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', flexGrow: 1 }}>
@@ -96,7 +108,7 @@ export default function Navbar() {
           {isLoggedIn && !isDriver && !isAdmin && <Button color="inherit" component={Link} to="/booking">Book Now</Button>}
           {isAdmin && <Button color="inherit" component={Link} to="/admin-bookings">Manage Bookings</Button>}
           {isAdmin && <Button color="inherit" component={Link} to="/vehicle-unavailability-admin">Block Vehicle</Button>}
-          {isAdmin && <Button color="inherit" component={Link} to="/vehicles">Manage Vehicles</Button>}
+          
           
           {isDriver && <Button color="inherit" component={Link} to="/driver-availability">My Unavailability</Button>}
           

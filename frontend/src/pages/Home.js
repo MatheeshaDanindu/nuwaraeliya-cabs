@@ -21,7 +21,7 @@ export default function Home() {
         textAlign: 'center',
         pb: 8
       }}>
-        <img src="/logo.png" alt="Nuwara Eliya Cabs Logo" style={{ width: 90, marginBottom: 16 }} />
+        <img src="/logo.jpg" alt="Nuwara Eliya Cabs Logo" style={{ width: 90, marginBottom: 16 }} />
         <Typography variant="h2" fontWeight="bold" gutterBottom>
           Welcome to Nuwaraeliya Cabs
         </Typography>
@@ -39,7 +39,7 @@ export default function Home() {
           <Card sx={{ p: 2, textAlign: 'center', minHeight: 180 }}>
             <DirectionsCarIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
             <Typography variant="h6">Wide Range of Vehicles</Typography>
-            <Typography variant="body2">From sedans to vans, choose the perfect ride for your journey.</Typography>
+            <Typography variant="body2">From auto to manual, choose the perfect ride for your journey.</Typography>
           </Card>
         </Grid>
         <Grid item xs={12} md={4}>
@@ -52,7 +52,7 @@ export default function Home() {
         <Grid item xs={12} md={4}>
           <Card sx={{ p: 2, textAlign: 'center', minHeight: 180 }}>
             <img src="/images/car1.jpg" alt="Premium" style={{ width: 60, marginBottom: 8, borderRadius: 8 }} />
-            <Typography variant="h6">Premium Experience</Typography>
+            <Typography variant="h6">Better Experience</Typography>
             <Typography variant="body2">Professional drivers, clean vehicles, and on-time service.</Typography>
           </Card>
         </Grid>
@@ -73,9 +73,9 @@ export default function Home() {
       <Box sx={{ maxWidth: 1100, mx: 'auto', mb: 6 }}>
         <Typography variant="h4" align="center" gutterBottom>Featured Vehicles</Typography>
         <Grid container spacing={3} justifyContent="center">
-          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car2.png" alt="Sedan" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">Sedan</Typography></Grid>
-          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car4.png" alt="Van" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">Van</Typography></Grid>
-          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car7.png" alt="SUV" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">SUV</Typography></Grid>
+          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car2.png" alt="Sedan" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">Honda Fit</Typography></Grid>
+          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car4.png" alt="Van" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">Nissan Leaf</Typography></Grid>
+          <Grid item xs={12} md={4}><CardMedia component="img" image="/images/car7.png" alt="SUV" sx={{ height: 160, objectFit: 'contain', mb: 1, borderRadius: 2 }} /><Typography align="center">Honda Civic</Typography></Grid>
         </Grid>
       </Box>
 
@@ -89,14 +89,7 @@ export default function Home() {
         </Grid>
       </Box>
 
-      {/* Quick Booking Form */}
-      <Box sx={{ maxWidth: 500, mx: 'auto', mb: 6, p: 3, background: '#f5f5f5', borderRadius: 2 }}>
-        <Typography variant="h5" align="center" gutterBottom>Quick Booking</Typography>
-        <TextField label="Pickup Location" fullWidth margin="normal" InputProps={{ startAdornment: <InputAdornment position="start"><DirectionsCarIcon /></InputAdornment> }} />
-        <TextField label="Drop-off Location" fullWidth margin="normal" />
-        <TextField label="Date" type="date" fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
-        <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>Start Booking</Button>
-      </Box>
+      
 
       {/* Testimonials */}
       <Box sx={{ maxWidth: 900, mx: 'auto', mb: 6 }}>
@@ -124,7 +117,7 @@ export default function Home() {
         <Typography fontWeight="bold">How do I book a cab?</Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>Use our online booking form or call our hotline to reserve your ride.</Typography>
         <Typography fontWeight="bold">Can I book for a group?</Typography>
-        <Typography variant="body2" sx={{ mb: 2 }}>Yes, we have vans and SUVs for group travel. Select your preferred vehicle when booking.</Typography>
+        <Typography variant="body2" sx={{ mb: 2 }}>Yes, we have cars for group travel. Select your preferred vehicle when booking.</Typography>
         <Typography fontWeight="bold">What payment methods do you accept?</Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>We accept credit/debit cards and online payments via Stripe.</Typography>
       </Box>

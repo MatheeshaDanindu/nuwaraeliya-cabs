@@ -14,11 +14,13 @@ export default function Profile() {
   const [reviewedBookings, setReviewedBookings] = useState({});
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     // Fetch user info from localStorage
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
+      setUserRole(user.role || '');
       fetch(`http://localhost:5000/api/users/${user.id}`)
         .then(res => res.json())
         .then(data => {
@@ -175,62 +177,67 @@ export default function Profile() {
           </Button>
         )}
       </Paper>
-      <Typography variant="h6" gutterBottom>Booking History</Typography>
-      <List>
-        {bookings.length === 0 && <ListItem><ListItemText primary="No bookings found." /></ListItem>}
-        {bookings.map(b => (
-          <ListItem key={b.id} divider secondaryAction={
-            <>
-              {b.driver_id && (
-                <Button size="small" color="info" variant="outlined" sx={{ mr: 1 }} onClick={() => window.location.href = `/driver/${b.driver_id}`}>
-                  View Driver
-                </Button>
-              )}
-              {b.status === 'approved' ? (
-                <PayAdvance booking={b} onPaid={() => {
-                  setSuccess('Advance payment successful! Booking confirmed.');
-                  // Refresh bookings
-                  const user = JSON.parse(localStorage.getItem('user'));
-                  fetch(`http://localhost:5000/api/bookings/user/${user.id}`)
-                    .then(res => res.json())
-                    .then(data => setBookings(Array.isArray(data) ? data : []));
-                }} />
-              ) : b.status === 'completed' ? (
-                !reviewedBookings[b.id] ? (
-                  <Button size="small" color="primary" variant="contained" onClick={() => setReviewDialog({ open: true, bookingId: b.id })}>
-                    Rate & Review
-                  </Button>
-                ) : (
-                  <Typography variant="body2" color="success.main">Reviewed</Typography>
-                )
-              ) : b.status !== 'cancelled' ? (
-                <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
-                  Cancel
-                </Button>
-              ) : null}
-            </>
-          }>
-            <ListItemText
-              primary={`${b.vehicle_model || b.vehicle || ''} - ${b.start_time?.slice(0, 16).replace('T', ' ')} to ${b.end_time?.slice(0, 16).replace('T', ' ')}`}
-              secondary={`Status: ${b.status || 'N/A'} | Payment: ${b.payment_status || 'N/A'}`}
-            />
-            {/* Show payment receipt if available */}
-            {b.payment_status === 'paid' && b.payment_receipt_url && (
-              <Box sx={{ ml: 2, minWidth: 180 }}>
-                <Typography variant="body2" color="success.main">Advance Paid</Typography>
-                <Button href={b.payment_receipt_url} target="_blank" rel="noopener" size="small" variant="outlined" sx={{ mt: 0.5 }}>
-                  View Receipt
-                </Button>
-                {b.paid_at && (
-                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                    Paid At: {new Date(b.paid_at).toLocaleString()}
-                  </Typography>
+      {/* Only show booking history for customers */}
+      {userRole === 'customer' && (
+        <>
+          <Typography variant="h6" gutterBottom>Booking History</Typography>
+          <List>
+            {bookings.length === 0 && <ListItem><ListItemText primary="No bookings found." /></ListItem>}
+            {bookings.map(b => (
+              <ListItem key={b.id} divider secondaryAction={
+                <>
+                  {b.driver_id && (
+                    <Button size="small" color="info" variant="outlined" sx={{ mr: 1 }} onClick={() => window.location.href = `/driver/${b.driver_id}`}>
+                      View Driver
+                    </Button>
+                  )}
+                  {b.status === 'approved' ? (
+                    <PayAdvance booking={b} onPaid={() => {
+                      setSuccess('Advance payment successful! Booking confirmed.');
+                      // Refresh bookings
+                      const user = JSON.parse(localStorage.getItem('user'));
+                      fetch(`http://localhost:5000/api/bookings/user/${user.id}`)
+                        .then(res => res.json())
+                        .then(data => setBookings(Array.isArray(data) ? data : []));
+                    }} />
+                  ) : b.status === 'completed' ? (
+                    !reviewedBookings[b.id] ? (
+                      <Button size="small" color="primary" variant="contained" onClick={() => setReviewDialog({ open: true, bookingId: b.id })}>
+                        Rate & Review
+                      </Button>
+                    ) : (
+                      <Typography variant="body2" color="success.main">Reviewed</Typography>
+                    )
+                  ) : b.status !== 'cancelled' ? (
+                    <Button size="small" color="error" variant="outlined" onClick={() => handleCancelBooking(b.id)}>
+                      Cancel
+                    </Button>
+                  ) : null}
+                </>
+              }>
+                <ListItemText
+                  primary={`${b.vehicle_model || b.vehicle || ''} - ${b.start_time?.slice(0, 16).replace('T', ' ')} to ${b.end_time?.slice(0, 16).replace('T', ' ')}`}
+                  secondary={`Status: ${b.status || 'N/A'} | Payment: ${b.payment_status || 'N/A'}`}
+                />
+                {/* Show payment receipt if available */}
+                {b.payment_status === 'paid' && b.payment_receipt_url && (
+                  <Box sx={{ ml: 2, minWidth: 180 }}>
+                    <Typography variant="body2" color="success.main">Advance Paid</Typography>
+                    <Button href={b.payment_receipt_url} target="_blank" rel="noopener" size="small" variant="outlined" sx={{ mt: 0.5 }}>
+                      View Receipt
+                    </Button>
+                    {b.paid_at && (
+                      <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                        Paid At: {new Date(b.paid_at).toLocaleString()}
+                      </Typography>
+                    )}
+                  </Box>
                 )}
-              </Box>
-            )}
-          </ListItem>
-        ))}
-      </List>
+              </ListItem>
+            ))}
+          </List>
+        </>
+      )}
       <ReviewDialog
         open={reviewDialog.open}
         bookingId={reviewDialog.bookingId}
