@@ -5,6 +5,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 export default function AdminDashboard() {
@@ -332,6 +334,41 @@ export default function AdminDashboard() {
     }
   };
 
+  // --- CSV & PDF Export Functions ---
+  function downloadCSV(data, filename) {
+    const csvRows = [];
+    // Header
+    csvRows.push('Vehicle,Bookings');
+    // Data
+    data.forEach(row => {
+      csvRows.push(`${row.model},${row.booking_count}`);
+    });
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  function downloadPDF(data, filename) {
+    const doc = new jsPDF();
+    // Ensure autoTable is available
+    if (typeof doc.autoTable !== 'function') {
+      alert('PDF export failed: autoTable is not available. Please check jsPDF-Autotable installation.');
+      return;
+    }
+    doc.text('Vehicle Usage Report', 14, 16);
+    doc.autoTable({
+      startY: 22,
+      head: [['Vehicle', 'Bookings']],
+      body: data.map(row => [row.model, row.booking_count]),
+    });
+    doc.save(filename);
+  }
+
   // --- Chart Data Preparation ---
   const bookingsData = {
     labels: ['Total Bookings', 'Total Cancellations'],
@@ -441,7 +478,7 @@ export default function AdminDashboard() {
       {/* --- Reports Section --- */}
       <Box sx={{ mb: 4, p: 2, background: '#f5f5f5', borderRadius: 2 }}>
         <Typography variant="h5" gutterBottom>Reports</Typography>
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
           <TextField
             select
             label="Analytics Period"
@@ -455,6 +492,7 @@ export default function AdminDashboard() {
             <MenuItem value="quarter">This Quarter</MenuItem>
             <MenuItem value="year">This Year</MenuItem>
           </TextField>
+          <Button variant="outlined" color="primary" onClick={() => downloadCSV(vehicleUsage, 'vehicle-usage-report.csv')}>Download CSV</Button>
         </Box>
         {reportLoading ? (
           <Typography>Loading reports...</Typography>
