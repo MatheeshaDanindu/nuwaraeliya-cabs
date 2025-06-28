@@ -148,12 +148,12 @@ app.post('/api/vehicles/:vehicleId/packages', async (req, res) => {
 
 app.post('/api/pay', async (req, res) => {
   const { amount, bookingId, status } = req.body;
-  try {
+  try {                                                                                                                                                                      
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
-          currency: 'usd',
+          currency: 'LKR',
           product_data: {
             name: 'Advance Payment',
           },

@@ -24,7 +24,7 @@ export default function Booking() {
   // Helper to get current datetime in 'YYYY-MM-DDTHH:MM' format for min attribute
   const getNowForInput = () => {
     const now = new Date();
-    now.setSeconds(0, 0); // Remove seconds/milliseconds
+    now.setSeconds(0, 0); 
     const tzOffset = -now.getTimezoneOffset();
     const diff = tzOffset >= 0 ? '+' : '-';
     const pad = n => n.toString().padStart(2, '0');
