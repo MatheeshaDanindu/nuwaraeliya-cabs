@@ -1,4 +1,4 @@
-// src/components/PayAdvance.js
+// PayAdvance component: handles advance payment for a booking using Stripe Checkout
 import React, { useState } from 'react';
 import { Button, Alert, Box } from '@mui/material';
 import { loadStripe } from '@stripe/stripe-js';

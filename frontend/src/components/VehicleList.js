@@ -1,9 +1,10 @@
-// src/components/VehicleList.js
+// VehicleList component: displays and filters available vehicles, handles date selection
 import React, { useEffect, useState } from 'react';
 import { Grid, Card, CardContent, CardMedia, Typography, Button, Box, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 export default function VehicleList() {
+  // State for vehicles, filtered list, date range, and errors
   const [vehicles, setVehicles] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [dates, setDates] = useState({ start: '', end: '' });
@@ -18,6 +19,7 @@ export default function VehicleList() {
   // Validation: End date cannot be before start date
   const endMin = dates.start ? dates.start : todayStr;
 
+  // Fetch vehicles from backend on mount
   useEffect(() => {
     fetch('http://localhost:5000/api/vehicles')
       .then(response => {
@@ -31,6 +33,7 @@ export default function VehicleList() {
       .catch(error => console.error('Fetch error:', error));
   }, []);
 
+  // Handle date input changes and validation
   const handleDateChange = e => {
     const { name, value } = e.target;
     const newDates = { ...dates, [name]: value };

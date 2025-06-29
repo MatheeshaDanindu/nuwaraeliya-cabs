@@ -1,4 +1,4 @@
-// src/components/RegisterForm.js
+// RegisterForm component: handles user registration, validation, and file uploads
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';

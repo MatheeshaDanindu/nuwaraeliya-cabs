@@ -1,4 +1,4 @@
-// src/pages/Dashboard.js
+// Dashboard component: user dashboard with stats, bookings, reviews, analytics, and quick booking
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Card, CardContent, Grid, Button, CircularProgress, Avatar, Chip, LinearProgress, List, ListItem, ListItemText, Divider, Alert, Box as MuiBox, Paper, TextField, Rating } from '@mui/material';
 import { useNavigate } from 'react-router-dom';

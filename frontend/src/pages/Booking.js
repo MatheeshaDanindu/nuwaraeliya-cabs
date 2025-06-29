@@ -1,10 +1,11 @@
-// src/pages/Booking.js
+// Booking page: select vehicle, driver, package, and submit a new booking
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, MenuItem, Alert, Card, CardContent, CardHeader, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 export default function Booking() {
   const navigate = useNavigate();
+  // State for vehicles, drivers, packages, advance, form fields, and UI status
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [packages, setPackages] = useState([]);

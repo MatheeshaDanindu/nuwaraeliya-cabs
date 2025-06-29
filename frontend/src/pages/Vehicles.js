@@ -1,7 +1,8 @@
-// src/pages/Vehicles.js
-import VehicleList from '../components/VehicleList'; // Default import
+// Vehicles page: displays a list of all available vehicles
+import VehicleList from '../components/VehicleList';
 
-export default function Vehicles() { // Default export
+export default function Vehicles() {
+  // Renders the vehicle list page
   return (
     <div>
       <h1>Available Vehicles</h1>

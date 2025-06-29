@@ -1,3 +1,4 @@
+// ReviewDialog component: modal for submitting a review and rating for a booking
 import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Rating, TextField, Alert } from '@mui/material';
 

@@ -1,10 +1,11 @@
-// src/pages/Profile.js
+// Profile page: user info, edit profile, bookings, reviews, and profile picture
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Button, Paper, List, ListItem, ListItemText, Alert, Avatar } from '@mui/material';
 import PayAdvance from '../components/PayAdvance';
 import ReviewDialog from '../components/ReviewDialog';
 
 export default function Profile() {
+  // State for user profile, bookings, editing, reviews, and profile picture
   const [profile, setProfile] = useState({ name: '', email: '', phone: '' });
   const [editing, setEditing] = useState(false);
   const [bookings, setBookings] = useState([]);
@@ -16,6 +17,7 @@ export default function Profile() {
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [userRole, setUserRole] = useState('');
 
+  // Fetch user info and bookings on mount or when editing/success changes
   useEffect(() => {
     // Fetch user info from localStorage
     const user = JSON.parse(localStorage.getItem('user'));

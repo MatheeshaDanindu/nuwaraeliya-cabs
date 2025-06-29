@@ -1,4 +1,4 @@
-// src/components/Navbar.js
+// Navbar component: top navigation bar with links, user menu, theme toggle, and responsive drawer
 import React, { useState, useEffect } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -29,6 +29,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useThemeMode } from '../ThemeContext';
 
+// Handles navigation, user authentication menu, and theme switching
 export default function Navbar() {
   const location = useLocation();
   const [user, setUser] = useState(() => {

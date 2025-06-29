@@ -1,4 +1,4 @@
-// src/pages/Home.js
+// Home page for Nuwaraeliya Cabs: hero, highlights, testimonials, and contact info
 import React from 'react';
 import { Box, Typography, Button, Grid, Card, CardContent, CardMedia, TextField, InputAdornment, Paper, Divider } from '@mui/material';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
@@ -7,6 +7,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 
 export default function Home() {
+  // Renders the main landing page with hero section, highlights, testimonials, and contact
   return (
     <Box>
       {/* Hero Section */}

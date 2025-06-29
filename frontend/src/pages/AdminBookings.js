@@ -1,3 +1,4 @@
+// AdminBookings page: manage and review all bookings as an admin
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert } from '@mui/material';
 

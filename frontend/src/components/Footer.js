@@ -1,3 +1,4 @@
+// Footer component: displays copyright and developer info at the bottom of the page
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 

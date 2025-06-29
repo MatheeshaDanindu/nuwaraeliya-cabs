@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.js
+// AdminDashboard page: manage vehicles, drivers, packages, and view admin reports
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, Card, CardContent, CardHeader, Divider, Snackbar, Alert as MuiAlert, Dialog as MuiDialog } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';

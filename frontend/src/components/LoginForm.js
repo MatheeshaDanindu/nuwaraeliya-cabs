@@ -1,4 +1,4 @@
-// src/components/LoginForm.js
+// LoginForm component handles user login, validation, and error display
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 export default function LoginForm() {
+  // State for form fields, error, loading, etc.
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,12 +16,16 @@ export default function LoginForm() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const navigate = useNavigate(); // For redirecting after login
 
+  // Handle input changes
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
+  // Toggle password visibility
   const handlePasswordVisibility = () => setShowPassword(v => !v);
 
+  // Toggle remember me checkbox
   const handleRememberMe = e => setRememberMe(e.target.checked);
 
+  // Handle form submission and login logic
   const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);

@@ -1,8 +1,10 @@
+
 const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// Secure endpoint to fetch Stripe Checkout Session details (for frontend receipt display)
+// Endpoint: Get Stripe Checkout Session details by session ID
+// Used by frontend to display payment receipt and status
 router.get('/session/:sessionId', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(req.params.sessionId, {
@@ -14,4 +16,5 @@ router.get('/session/:sessionId', async (req, res) => {
   }
 });
 
+// Export the router for use in main app
 module.exports = router;

@@ -1,8 +1,9 @@
-// src/components/BookingForm.js
+// BookingForm component for submitting a new vehicle booking
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography } from '@mui/material';
 
 export default function BookingForm({ vehicleId }) {
+  // State for booking form fields and submission status
   const [form, setForm] = useState({
     start_time: '',
     end_time: '',
@@ -10,8 +11,10 @@ export default function BookingForm({ vehicleId }) {
   });
   const [success, setSuccess] = useState(false);
 
+  // Handle input changes
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
+  // Handle form submission and booking API call
   const handleSubmit = async e => {
     e.preventDefault();
     // Add authentication token if needed
@@ -23,6 +26,7 @@ export default function BookingForm({ vehicleId }) {
     if (res.ok) setSuccess(true);
   };
 
+  // Render booking form UI
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}>
       <Typography variant="h5" gutterBottom>Book Your Ride</Typography>

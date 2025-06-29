@@ -12,20 +12,21 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 require('dotenv').config();
 
-// Initialize Express app FIRST
+// Initialize Express app
 const app = express();
 
-// Configure CORS properly
+
+// Configure CORS to allow frontend requests
 const corsOptions = {
   origin: 'http://localhost:3000',
   optionsSuccessStatus: 200
 };
-app.use(cors(corsOptions));  // <-- Only CORS configuration needed
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Configure nodemailer transporter (example with Gmail, use env vars in production)
+// Configure nodemailer transporter for sending emails (uses Gmail; set credentials in .env)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -37,7 +38,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Storage for user uploads
+// Multer storage configuration for user uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, 'uploads'));
@@ -49,16 +50,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Ensure uploads dir exists
+// Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// Test endpoint
+// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Nuwaraeliya Cabs API is running!');
 });
 
-// Vehicles endpoint
+// Get all vehicles
 app.get('/api/vehicles', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM vehicles');
@@ -68,7 +69,7 @@ app.get('/api/vehicles', async (req, res) => {
   }
 });
 
-// Add vehicle
+// Add a new vehicle
 app.post('/api/vehicles', async (req, res) => {
   const { model, number_plate, capacity, status } = req.body;
   try {
@@ -82,7 +83,7 @@ app.post('/api/vehicles', async (req, res) => {
   }
 });
 
-// Update vehicle
+// Update vehicle details
 app.put('/api/vehicles/:id', async (req, res) => {
   const { id } = req.params;
   const { model, number_plate, capacity, status } = req.body;
@@ -97,7 +98,7 @@ app.put('/api/vehicles/:id', async (req, res) => {
   }
 });
 
-// Delete vehicle (prevent if bookings exist)
+// Delete a vehicle (only if no bookings exist)
 app.delete('/api/vehicles/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -114,6 +115,7 @@ app.delete('/api/vehicles/:id', async (req, res) => {
 });
 
 // --- Trip Packages Endpoints ---
+
 // Get all packages for a vehicle
 app.get('/api/vehicles/:vehicleId/packages', async (req, res) => {
   const { vehicleId } = req.params;
@@ -128,7 +130,7 @@ app.get('/api/vehicles/:vehicleId/packages', async (req, res) => {
   }
 });
 
-// Create a package for a vehicle
+// Create a new package for a vehicle
 app.post('/api/vehicles/:vehicleId/packages', async (req, res) => {
   const { vehicleId } = req.params;
   const { name, description, price, price_unit, included_km, km_unit } = req.body;
@@ -146,6 +148,7 @@ app.post('/api/vehicles/:vehicleId/packages', async (req, res) => {
   }
 });
 
+// Create Stripe payment session for advance payment
 app.post('/api/pay', async (req, res) => {
   const { amount, bookingId, status } = req.body;
   try {                                                                                                                                                                      
@@ -175,6 +178,7 @@ app.post('/api/pay', async (req, res) => {
 });
 
 
+// Update booking status after payment
 app.post("/api/payment/update-booking-status", async (req, res) => {
   const { bookingId, status } = req.body;
   try {
@@ -233,7 +237,7 @@ function calculateAdvance(packageObj) {
   return Math.round((Number(packageObj.price) * 0.2) * 100) / 100;
 }
 
-// Endpoint to get advance payment for a package
+// Get advance payment amount for a package
 app.get('/api/packages/:id/advance', async (req, res) => {
   const { id } = req.params;
   const pkg = await pool.query('SELECT * FROM packages WHERE id = $1', [id]);
@@ -242,7 +246,7 @@ app.get('/api/packages/:id/advance', async (req, res) => {
   res.json({ advance });
 });
 
-// Registration with file upload, pending approval
+// User registration with file upload (pending admin approval)
 app.post('/api/register', upload.fields([
   { name: 'id_card', maxCount: 1 },
   { name: 'address_proof', maxCount: 1 },
@@ -284,7 +288,7 @@ app.post('/api/register', upload.fields([
   }
 });
 
-// Admin: get pending users
+// Admin: get all pending users
 app.get('/api/users/pending', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, name, email, id_card_path, address_proof_path FROM users WHERE approved = false AND role = $1', ['customer']);
@@ -294,7 +298,7 @@ app.get('/api/users/pending', async (req, res) => {
   }
 });
 
-// Admin: approve user
+// Admin: approve a user
 app.post('/api/users/:id/approve', async (req, res) => {
   const { id } = req.params;
   try {
@@ -306,7 +310,7 @@ app.post('/api/users/:id/approve', async (req, res) => {
   }
 });
 
-// Admin: reject user (optional: delete files)
+// Admin: reject a user and delete uploaded files
 app.post('/api/users/:id/reject', async (req, res) => {
   const { id } = req.params;
   try {
@@ -335,7 +339,7 @@ app.get('/uploads/:filename', (req, res) => {
   }
 });
 
-// Login endpoint
+// User login endpoint
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -356,7 +360,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Endpoint to get available vehicles for a date range
+// Get available vehicles for a date range
 app.get('/api/vehicles/available', async (req, res) => {
   const { start, end } = req.query;
   if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
@@ -380,7 +384,7 @@ app.get('/api/vehicles/available', async (req, res) => {
   }
 });
 
-// Endpoint to add a vehicle unavailability period
+// Add a vehicle unavailability period
 app.post('/api/vehicle-unavailability', async (req, res) => {
   const { vehicle_id, start_time, end_time, reason } = req.body;
   try {
@@ -394,7 +398,7 @@ app.post('/api/vehicle-unavailability', async (req, res) => {
   }
 });
 
-// Endpoint to get unavailable vehicles for a date range
+// Get unavailable vehicles for a date range
 app.get('/api/vehicle-unavailability', async (req, res) => {
   const { start, end } = req.query;
   if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
@@ -409,7 +413,7 @@ app.get('/api/vehicle-unavailability', async (req, res) => {
   }
 });
 
-// Create a booking
+// Create a new booking
 app.post('/api/bookings', async (req, res) => {
   const { vehicle_id, start_time, end_time, user_id, driver_id, package_id } = req.body;
   if (!vehicle_id || !start_time || !end_time || !user_id || !driver_id || !package_id) {
@@ -572,7 +576,7 @@ app.post('/api/bookings/:id/manual-payment-status', async (req, res) => {
   }
 });
 
-// Get user profile
+// Get user profile by user ID
 app.get('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -642,7 +646,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Get bookings for a user
+// Get all bookings for a user
 app.get('/api/bookings/user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
@@ -657,7 +661,7 @@ app.get('/api/bookings/user/:userId', async (req, res) => {
   }
 });
 
-// Get bookings for a driver (driver schedule)
+// Get all bookings for a driver (driver schedule)
 app.get('/api/bookings/driver/:driverId', async (req, res) => {
   const { driverId } = req.params;
   try {
@@ -942,6 +946,7 @@ const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
 
 // --- Customer Reviews Endpoints ---
+
 // Submit a review for a completed booking (one per booking)
 app.post('/api/reviews', async (req, res) => {
   const { booking_id, rating, comment } = req.body;
@@ -1003,7 +1008,7 @@ app.get('/api/reviews/user/:userId', async (req, res) => {
   }
 });
 
-// (Optional) Get review for a booking
+// Get review for a booking
 app.get('/api/reviews/booking/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   try {
@@ -1016,6 +1021,8 @@ app.get('/api/reviews/booking/:bookingId', async (req, res) => {
 });
 
 // --- User Analytics Endpoint ---
+
+// Get analytics for a user (total rides, total spent, most used vehicle)
 app.get('/api/analytics/user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
@@ -1053,15 +1060,16 @@ app.get('/api/analytics/user/:userId', async (req, res) => {
 });
 
 // --- Promotions & Offers Endpoint ---
+
+// Get current promotions and offers (static demo data)
 app.get('/api/promotions', async (req, res) => {
-  // For now, return static demo data. Replace with DB fetch if needed.
   res.json([
     { title: '10% Off Your Next Ride', description: 'Use code CAB10 to get 10% off your next booking. Valid until 30 June 2025.' },
     { title: 'Refer a Friend', description: 'Refer a friend and both get Rs. 500 ride credit after their first completed booking.' }
   ]);
 });
 
-// Endpoint to get available drivers for a date range (not assigned to any booking in the range)
+// Get available drivers for a date range (not assigned to any booking in the range)
 app.get('/api/drivers/available', async (req, res) => {
   const { start, end } = req.query;
   if (!start || !end) return res.status(400).json({ error: 'Start and end dates required' });
@@ -1080,7 +1088,7 @@ app.get('/api/drivers/available', async (req, res) => {
   }
 });
 
-// Start server
+// Start the Express server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

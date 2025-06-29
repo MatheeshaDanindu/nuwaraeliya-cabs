@@ -1,4 +1,4 @@
-// src/components/ForgotPasswordDialog.js
+// ForgotPasswordDialog component: modal for requesting a password reset link
 import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert } from '@mui/material';
 
