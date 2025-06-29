@@ -5,6 +5,8 @@
     "@fullcalendar/react": "^6.1.17",
     "@fullcalendar/timegrid": "^6.1.17",
     "chart.js": "^4.4.9",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "react-chartjs-2": "^5.3.0"
